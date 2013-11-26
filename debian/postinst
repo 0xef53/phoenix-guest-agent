@@ -1,0 +1,43 @@
+#!/bin/sh -eu
+
+
+sysvinit_add() {
+    grep -q '^PGA:' /etc/inittab && return 0 || :
+    cp /etc/inittab /etc/inittab'{new}'
+    cat >> /etc/inittab'{new}' <<-"EOF"
+#-- PGA begin
+PGA:2345:respawn:/usr/sbin/phoenix-ga
+#-- PGA end
+EOF
+    mv -f /etc/inittab'{new}' /etc/inittab
+
+    ps -p 1 >/dev/null 2>&1 && kill -s HUP 1 || :
+}
+
+
+upstart_add() {
+    cat >> /etc/init/phoenix-ga.conf <<-"EOF"
+start on runlevel [2345]
+stop on shutdown
+respawn
+exec /usr/sbin/phoenix-ga
+EOF
+
+    ps -p 1 >/dev/null 2>&1 && /sbin/start phoenix-ga || :
+}
+
+
+case "${1:-}" in
+    configure)
+        test -f '/etc/inittab' && sysvinit_add || :
+        test -x '/sbin/start' && upstart_add || :
+    ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+    *)
+        echo "postinst called with unsupported argument" >&2
+        exit 1
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,5 @@
+version 0.1:
+
+    - Initial release:
+        Functions for working with guest's files: reading/writing files, setting mode/uid/gid, creating directories, listing directories etc.
+        Functions for working with network settings: adding/removing IP-adresses, getting summary information.

@@ -1,0 +1,14 @@
+Source: phoenix-guest-agent
+Section: admin
+Priority: extra
+Maintainer: Sergey Zhuravlev <sergey@netangels.ru>
+Build-Depends: debhelper (>= 9), golang-go
+Standards-Version: 3.9.4
+
+Package: phoenix-guest-agent
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Guest-side agent for qemu-kvm virtual machines
+ Agent provides communication with the guest system using
+ a virtio-serial port, and allows to perform some functions
+ in the guest from the master.
