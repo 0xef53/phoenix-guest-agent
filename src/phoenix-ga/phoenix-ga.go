@@ -3,6 +3,7 @@ package main
 import (
     "bufio"
     "commands"
+    "encoding/base64"
     "encoding/json"
     "flag"
     "fmt"
@@ -57,11 +58,15 @@ func OpenPort(dev string) (*Port, error) {
 }
 
 
-func (p *Port) SendError(desc string, tag string) (int, error) {
-    errstr := fmt.Sprintf("{\"error\": {\"desc\": \"%s\"}, \"tag\": \"%s\"}\n", desc, tag)
+func (p *Port) SendError(err error, tag string) (int, error) {
+    var code int = -1
+    errJStr := fmt.Sprintf(`{"error": {"bufb64": "%s", "code": %d}, "tag": "%s"}`+"\n",
+                          base64.StdEncoding.EncodeToString([]byte(err.Error())),
+                          code,
+                          tag)
     p.Lock()
     defer p.Unlock()
-    return p.f.Write([]byte(errstr))
+    return p.f.Write([]byte(errJStr))
 }
 
 
@@ -160,7 +165,7 @@ func main() {
                 lock = false
                 req := &Request{}
                 if err := json.Unmarshal(jsonReq, &req); err != nil {
-                     port.SendError(fmt.Sprintf("JSON parse error: %s", err), "")
+                     port.SendError(fmt.Errorf("JSON parse error: %s", err), "")
                      log.Printf("JSON parse error: %s", err)
                      continue
                 }
@@ -179,12 +184,12 @@ func main() {
                     log.Printf("Processing command: %s, tag = %s", req.Command, req.Tag)
                     go commands.Commands[req.Command](cResp, req.RawArgs, req.Tag)
                 } else {
-                    port.SendError(fmt.Sprintf("The command not found: %s", req.Command), req.Tag)
+                    port.SendError(fmt.Errorf("The command not found: %s", req.Command), req.Tag)
                     log.Printf("The command not found: %s", req.Command)
                 }
             case resp := <-cResp:
                 if resp.Err != nil {
-                    port.SendError(resp.Err.Error(), resp.Tag)
+                    port.SendError(resp.Err, resp.Tag)
                 } else {
                     port.SendResponse(resp.Value, resp.Tag)
                 }
