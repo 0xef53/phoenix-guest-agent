@@ -9,7 +9,7 @@ the master.
 ### Supported functions
 
 - working with guest's files and directories: reading/writing files, setting mode/uid/gid, creating directories, listing directories etc.
-- querying and setting network parameters: adding/removing IP-adresses, getting summary information
+- querying and setting network parameters: adding/removing IP-adresses, getting summary information.
 
 
 ### How to use
@@ -29,22 +29,32 @@ On the guest system, launch the guest agent like this:
 Now, we can talk to guest agent from the master server:
 
     master# socat - UNIX-CONNECT:/var/run/guestagent.sock
-    {"execute": "get-commands", "tag": "abc"}
-    {"return": ["get-commands", "agent-shutdown", "ping", "get-netifaces", "linux-ipaddr-add", "linux-ipaddr-del", "file-open", "file-close", "file-read", "file-write", "get-file-md5sum"], "tag": "abc"}
+    { "execute": "get-commands", "tag": "abc" }
+    { "return": ["get-commands", "agent-shutdown", "ping", "get-netifaces", "linux-ipaddr-add", "linux-ipaddr-del", "file-open", "file-close", "file-read", "file-write", "get-file-md5sum"], "tag": "abc" }
 
-    {"execute": "ping", "tag": "def"}
-    {"return": "0.1", "tag": "def"}
+    { "execute": "ping", "tag": "def" }
+    { "return": "0.1", "tag": "def" }
 
 Communication with the guest agent occurs at QMP-like protocol. The success response contains
 the field "return" with the results of command execution. The error response contains the field
-"error" with error's description. For details see the [commands documentation](commands.md).
+"error" with a base64-encoded description. For details see the [commands documentation](commands.md).
+
+Since version 0.2 the field "error" also contains an extended code status, which can take next values:
+
+- an exit code of an external program in case of functions `linux-ipaddr-*`
+- an unsigned number (`errno`) describing an error condition
+- and `-1` in case if an extended code is not defined
+
+E.g:
+
+    { "error": { "bufb64": "anVzdCBhIHRlc3QgZXJyb3I=", "code": -1 }, "tag": "8be" }
 
 
 ### Resource consumption
 
 Measurements were performed using the cpuacct cgroups controller and pmap.
 
-In the idling, agent consumed about 17 seconds of CPU time per day and about 2.5 Mb RSS.
+In the idling agent consumed about 17 seconds of CPU time per day and about 2.5 Mb RSS.
 
 
 ### Supported OS
