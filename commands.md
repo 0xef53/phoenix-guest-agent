@@ -1,7 +1,7 @@
 General
 -------
 
-- All requests to the Agent should be terminating with CRLF
+- All requests to the Agent should be terminated with CRLF
 - Request may contain a string field "tag" to uniquely identify a response from Agent
 - For more details, see the QMP-specification
 
@@ -30,7 +30,7 @@ Commands
 
 ### agent-shutdown
 
-Shutdown the guest agent. If the agent started by the init process, it will be automatically launched. Therefore in this case the command reload agent.
+Shutdown the guest agent. If the agent started by the init process, it will be automatically launched. Therefore in this case the command reloads agent.
 
 **Returns:** true on success
 
@@ -224,6 +224,16 @@ Change the file mode bits in the guest system.
              "ips': ["193.107.236.127/32", "fe80::216:3eff:fe02:9207/64"']
            } ]
        }
+
+
+### get-default-gateways
+
+**Return:** list of default gateways for IPv4/IPv6 families.
+
+**Example:**
+
+    -> { "execute": "get-default-gateways" }
+    <- { "return": ["10.11.11.11"] }
 
 
 ### linux-ipaddr-add
