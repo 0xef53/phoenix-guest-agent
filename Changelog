@@ -1,5 +1,11 @@
+version 0.2:
+
+    - An error description now returns as a base64-encoded string.
+    - Added an extended code status to the error response.
+    - Added function to get a list of default gateways for IPv4/IPv6 families
+
 version 0.1:
 
-    - Initial release:
-        Functions for working with guest's files: reading/writing files, setting mode/uid/gid, creating directories, listing directories etc.
-        Functions for working with network settings: adding/removing IP-adresses, getting summary information.
+    - Initial release.
+    - Functions for working with guest's files: reading/writing files, setting mode/uid/gid, creating directories, listing directories etc.
+    - Functions for working with network settings: adding/removing IP-adresses, getting summary information.

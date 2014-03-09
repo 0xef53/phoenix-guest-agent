@@ -1,3 +1,11 @@
+phoenix-guest-agent (0.2-1) unstable; urgency=low
+
+  * An error description now returns as a base64-encoded string.
+  * Added an extended code status to the error response.
+  * Added function to get a list of default gateways for IPv4/IPv6 families.
+
+ -- Sergey Zhuravlev <sergey@netangels.ru>  Sun, 09 Mar 2014 20:41:24 +0600
+
 phoenix-guest-agent (0.1-1) unstable; urgency=low
 
   * Initial release.

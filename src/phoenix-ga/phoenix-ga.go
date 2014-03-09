@@ -18,7 +18,7 @@ import (
 
 
 // Defines & defaults
-const VERSION string   = "0.1"
+const VERSION string   = "0.2"
 const LOGFILE string   = "/var/log/phoenix.log"
 var PORTPATH string    = "/dev/virtio-ports/org.guest-agent.0"
 var DEBUG bool         = false
