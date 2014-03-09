@@ -10,6 +10,7 @@ import (
     "io"
     "log"
     "os"
+    "os/exec"
     "sync"
     "syscall"
     "time"
@@ -60,6 +61,18 @@ func OpenPort(dev string) (*Port, error) {
 
 func (p *Port) SendError(err error, tag string) (int, error) {
     var code int = -1
+    switch err.(type) {
+        case *os.PathError:
+            code = int(err.(*os.PathError).Err.(syscall.Errno))
+        case *commands.ExtExitError:
+            status := err.(*commands.ExtExitError).Err.(*exec.ExitError).Sys().(syscall.WaitStatus)
+            switch {
+                case status.Exited():
+                    code = status.ExitStatus()
+                case status.Signaled():
+                    code = 128 + int(status.Signal())
+            }
+    }
     errJStr := fmt.Sprintf(`{"error": {"bufb64": "%s", "code": %d}, "tag": "%s"}`+"\n",
                           base64.StdEncoding.EncodeToString([]byte(err.Error())),
                           code,

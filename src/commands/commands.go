@@ -11,6 +11,8 @@ import (
     "os"
     "os/exec"
     "sync"
+    "syscall"
+    "unsafe"
 )
 
 
@@ -35,6 +37,23 @@ type Response struct {
     Value interface{}
     Tag string
     Err error
+}
+
+
+// An extended exec.ExitError
+type ExtExitError struct {
+    Err error
+    Desc string
+}
+
+
+func NewExtExitError(err error, desc string) error {
+    return &ExtExitError{err, desc}
+}
+
+
+func (e *ExtExitError) Error() string {
+    return e.Err.Error() + ": " + e.Desc
 }
 
 
@@ -330,7 +349,7 @@ func GetNetIfaces(cResp chan<- *Response, args *json.RawMessage, tag string) {
 func LinuxIpAddr(action string, ip, dev string) (error) {
     out, err := exec.Command("/bin/ip", "addr", action, ip, "dev", dev).CombinedOutput()
     if err != nil {
-        return fmt.Errorf("%s: %s", err, out)
+        return NewExtExitError(err, string(out))
     }
     return nil
 }
