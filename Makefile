@@ -5,7 +5,7 @@ export GOPATH := $(PWD)/.build
 all: $(GOPATH)/bin/phoenix-ga
 
 $(GOPATH)/bin/phoenix-ga: $(GOPATH)/fresh
-	go install -v phoenix-ga
+	go install -v -tags netgo -a phoenix-ga
 
 install: all
 	install -v -m0750 -t $(DESTDIR)/usr/sbin $(GOPATH)/bin/phoenix-ga

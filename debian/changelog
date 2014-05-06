@@ -1,3 +1,9 @@
+phoenix-guest-agent (0.3-1) unstable; urgency=low
+
+  * Added functions to freeze/thaw filesystems.
+
+ -- Sergey Zhuravlev <sergey@netangels.ru>  Mon, 05 May 2014 23:16:04 +0600
+
 phoenix-guest-agent (0.2-1) unstable; urgency=low
 
   * An error description now returns as a base64-encoded string.

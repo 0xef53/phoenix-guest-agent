@@ -203,6 +203,40 @@ Change the file mode bits in the guest system.
     <- { "return": [<file_stat_structures>] }
 
 
+### fs-freeze
+
+Sync and freeze all freezable local guest file systems.
+
+**Returns:** true on success
+
+**Example:**
+
+    -> { "execute": "fs-freeze" }
+    <- { "return": true }
+
+
+### fs-unfreeze
+
+Unfreeze all frozen guest file systems.
+
+**Returns:** true on success
+
+**Example:**
+
+    -> { "execute": "fs-unfreeze" }
+    <- { "return": true }
+
+
+### get-freeze-status
+
+**Returns:** true if file systems are frozen or false otherwise
+
+**Example:**
+
+    -> { "execute": "get-freeze-status" }
+    <- { "return": false }
+
+
 ### get-netifaces
 
 **Returns:** list of network parameters: IP-adresses, MAC-adresses etc.

@@ -10,6 +10,7 @@ the master.
 
 - working with guest's files and directories: reading/writing files, setting mode/uid/gid, creating directories, listing directories etc.
 - querying and setting network parameters: adding/removing IP-adresses, getting summary information.
+- freezing/thawing guest filesystems.
 
 
 ### How to use
