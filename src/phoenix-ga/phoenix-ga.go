@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"commands"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -14,6 +13,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"phoenix-ga/commands"
 )
 
 const VERSION = "0.3"
