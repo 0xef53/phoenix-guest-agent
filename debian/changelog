@@ -1,3 +1,10 @@
+phoenix-guest-agent (0.4-1) unstable; urgency=low
+
+  * Functions IpAddrAdd() and IpAddrDel() have been rewritten with using docker netlink.
+  * Added functions to Up/Down a network interface.
+
+ -- Sergey Zhuravlev <sergey@netangels.ru>  Sat, 24 Jan 2015 14:38:02 +0500
+
 phoenix-guest-agent (0.3-1) unstable; urgency=low
 
   * Added functions to freeze/thaw filesystems.
