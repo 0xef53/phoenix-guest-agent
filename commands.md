@@ -15,7 +15,7 @@ Commands
 **Example:**
 
     -> { "execute": "ping" }
-    <- { "return": "0.1" }
+    <- { "return": "0.4" }
 
 
 ### get-commands
@@ -270,9 +270,11 @@ Unfreeze all frozen guest file systems.
     <- { "return": ["10.11.11.11"] }
 
 
-### linux-ipaddr-add
+### ipaddr-add
 
 Add the IP-address to the network interface in the guest system.
+
+The old name `linux-ipaddr-add` is also available, but is deprecated.
 
 **Arguments:** 
 
@@ -287,9 +289,11 @@ Add the IP-address to the network interface in the guest system.
     <- { "return": true }
 
 
-### linux-ipaddr-del
+### ipaddr-del
 
 Remove the IP-address from the network interface in the guest system.
+
+The old name `linux-ipaddr-del` is also available, but is deprecated.
 
 **Arguments:** 
 
@@ -303,3 +307,34 @@ Remove the IP-address from the network interface in the guest system.
     -> { "execute": "linux-ipaddr-del", "arguments": { "ip": "192.168.55.77/32", "dev": "eth0" } }
     <- { "return": true }
 
+
+### net-iface-up
+
+Bring up the specified network interface in the guest system.
+
+**Arguments:** 
+
+- `dev` -- a network interface name
+
+**Returns:** true on success
+
+**Example:**
+
+    -> { "execute": "net-iface-up", "arguments": { "dev": "eth1" } }
+    <- { "return": true }
+
+
+### net-iface-down
+
+Bring down the specified network interface in the guest system.
+
+**Arguments:** 
+
+- `dev` -- a network interface name
+
+**Returns:** true on success
+
+**Example:**
+
+    -> { "execute": "net-iface-down", "arguments": { "dev": "eth1" } }
+    <- { "return": true }

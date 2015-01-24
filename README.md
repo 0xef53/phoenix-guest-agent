@@ -40,9 +40,8 @@ Communication with the guest agent occurs at QMP-like protocol. The success resp
 the field "return" with the results of command execution. The error response contains the field
 "error" with a base64-encoded description. For details see the [commands documentation](commands.md).
 
-Since version 0.2 the field "error" also contains an extended code status, which can take next values:
+Since version 0.4 the field "error" also contains an extended code status, which can take next values:
 
-- an exit code of an external program in case of functions `linux-ipaddr-*`
 - an unsigned number (`errno`) describing an error condition
 - and `-1` in case if an extended code is not defined
 
