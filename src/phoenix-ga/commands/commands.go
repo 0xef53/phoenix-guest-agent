@@ -12,6 +12,8 @@ var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
 	"get-freeze-status":    GetFreezeStatus,
 	"ipaddr-add":           IpAddrAdd,
 	"ipaddr-del":           IpAddrDel,
+	"net-iface-up":         NetIfaceUp,
+	"net-iface-down":       NetIfaceDown,
 	"linux-ipaddr-add":     IpAddrAdd, // Deprecated since ver. 0.4
 	"linux-ipaddr-del":     IpAddrDel, // Deprecated since ver. 0.4
 	"file-open":            FileOpen,

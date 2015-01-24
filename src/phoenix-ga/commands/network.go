@@ -115,3 +115,27 @@ loop:
 	}
 	cResp <- &Response{&gateways, tag, nil}
 }
+
+func NetIfaceUp(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+	args := &struct {
+		Dev string `json:"dev"`
+	}{}
+	json.Unmarshal(*rawArgs, &args)
+	if err := network.InterfaceUp(args.Dev); err != nil {
+		cResp <- &Response{nil, tag, err}
+		return
+	}
+	cResp <- &Response{true, tag, nil}
+}
+
+func NetIfaceDown(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+	args := &struct {
+		Dev string `json:"dev"`
+	}{}
+	json.Unmarshal(*rawArgs, &args)
+	if err := network.InterfaceDown(args.Dev); err != nil {
+		cResp <- &Response{nil, tag, err}
+		return
+	}
+	cResp <- &Response{true, tag, nil}
+}
