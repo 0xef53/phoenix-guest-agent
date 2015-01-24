@@ -16,7 +16,7 @@ import (
 	"phoenix-ga/commands"
 )
 
-const VERSION = "0.3"
+const VERSION = "0.4"
 const LOGFILE = "/var/log/phoenix.log"
 
 var PORTPATH string = "/dev/virtio-ports/org.guest-agent.0"
