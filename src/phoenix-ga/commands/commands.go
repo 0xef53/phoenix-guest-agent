@@ -10,8 +10,10 @@ var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
 	"fs-freeze":            FsFreeze,
 	"fs-unfreeze":          FsUnFreeze,
 	"get-freeze-status":    GetFreezeStatus,
-	"linux-ipaddr-add":     LinuxIpAddrAdd,
-	"linux-ipaddr-del":     LinuxIpAddrDel,
+	"ipaddr-add":           IpAddrAdd,
+	"ipaddr-del":           IpAddrDel,
+	"linux-ipaddr-add":     IpAddrAdd, // Deprecated since ver. 0.4
+	"linux-ipaddr-del":     IpAddrDel, // Deprecated since ver. 0.4
 	"file-open":            FileOpen,
 	"file-close":           FileClose,
 	"file-read":            FileRead,
@@ -28,20 +30,6 @@ type Response struct {
 	Value interface{}
 	Tag   string
 	Err   error
-}
-
-// An extended exec.ExitError
-type ExtExitError struct {
-	Err  error
-	Desc string
-}
-
-func NewExtExitError(err error, desc string) error {
-	return &ExtExitError{err, desc}
-}
-
-func (e *ExtExitError) Error() string {
-	return e.Err.Error() + ": " + e.Desc
 }
 
 func GetCommands(cResp chan<- *Response, tag string) {

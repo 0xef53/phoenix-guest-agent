@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"net"
 	"os"
-	"os/exec"
 	"syscall"
 	"unsafe"
+
+	"github.com/docker/libcontainer/network"
 )
 
 type NetIf struct {
@@ -45,36 +46,26 @@ func GetNetIfaces(cResp chan<- *Response, args *json.RawMessage, tag string) {
 	cResp <- &Response{&iflist, tag, nil}
 }
 
-func LinuxIpAddr(action string, ip, dev string) error {
-	out, err := exec.Command("/bin/ip", "addr", action, ip, "dev", dev).CombinedOutput()
-	if err != nil {
-		return NewExtExitError(err, string(out))
-	}
-	return nil
-}
-
-func LinuxIpAddrAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+func IpAddrAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Dev    string `json:"dev"`
 		IpCidr string `json:"ip"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-
-	if err := LinuxIpAddr("add", args.IpCidr, args.Dev); err != nil {
+	if err := network.SetInterfaceIp(args.Dev, args.IpCidr); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
 	cResp <- &Response{true, tag, nil}
 }
 
-func LinuxIpAddrDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+func IpAddrDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Dev    string `json:"dev"`
 		IpCidr string `json:"ip"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-
-	if err := LinuxIpAddr("del", args.IpCidr, args.Dev); err != nil {
+	if err := network.DeleteInterfaceIp(args.Dev, args.IpCidr); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}

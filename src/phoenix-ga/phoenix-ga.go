@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"sync"
 	"syscall"
 	"time"
@@ -71,14 +70,6 @@ func (p *Port) SendError(err error, tag string) (int, error) {
 	switch err.(type) {
 	case *os.PathError:
 		code = int(err.(*os.PathError).Err.(syscall.Errno))
-	case *commands.ExtExitError:
-		status := err.(*commands.ExtExitError).Err.(*exec.ExitError).Sys().(syscall.WaitStatus)
-		switch {
-			case status.Exited():
-				code = status.ExitStatus()
-			case status.Signaled():
-				code = 128 + int(status.Signal())
-		}
 	}
 	errJStr := fmt.Sprintf(`{"error": {"bufb64": "%s", "code": %d}, "tag": "%s"}`+"\n",
 		base64.StdEncoding.EncodeToString([]byte(err.Error())),
@@ -191,15 +182,15 @@ func main() {
 				continue
 			}
 			switch req.Command {
-				case "ping":
-					port.SendResponse(VERSION, req.Tag)
-					continue
-				case "agent-shutdown":
-					info("Shutdown command received from client")
-					return
-				case "get-commands":
-					go commands.GetCommands(cResp, req.Tag)
-					continue
+			case "ping":
+				port.SendResponse(VERSION, req.Tag)
+				continue
+			case "agent-shutdown":
+				info("Shutdown command received from client")
+				return
+			case "get-commands":
+				go commands.GetCommands(cResp, req.Tag)
+				continue
 			}
 			if commands.FROZEN && req.Command != "get-freeze-status" && req.Command != "fs-unfreeze" {
 				port.SendError(fmt.Errorf("All filesystems are frozen. Cannot execute the command: %s", req.Command), req.Tag)

@@ -15,7 +15,7 @@ import (
 type FD struct {
 	sync.RWMutex
 	next int
-	h map[int]*os.File
+	h    map[int]*os.File
 }
 
 func NewFD() *FD {
