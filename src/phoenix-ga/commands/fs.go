@@ -2,7 +2,6 @@ package commands
 
 import (
 	"crypto/md5"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -103,23 +102,23 @@ func FileRead(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
-	cResp <- &Response{
-		&struct {
-			Buf_b64 string `json:"bufb64"`
-			Eof     bool   `json:"eof"`
-		}{base64.StdEncoding.EncodeToString(buf[:n]), eof},
-		tag, nil,
+	res := &struct {
+		Buf []byte `json:"bufb64"`
+		Eof bool   `json:"eof"`
+	}{
+		[]byte(buf[:n]),
+		eof,
 	}
+	cResp <- &Response{res, tag, nil}
 }
 
 func FileWrite(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Id     int    `json:"handle_id"`
-		Bufb64 string `json:"bufb64"`
-		Eof    bool   `json:"eof"`
+		Id  int    `json:"handle_id"`
+		Buf []byte `json:"bufb64"`
+		Eof bool   `json:"eof"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-
 	f, err := FDStore.Get(args.Id)
 	if err != nil {
 		cResp <- &Response{nil, tag, err}
@@ -130,13 +129,7 @@ func FileWrite(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		cResp <- &Response{true, tag, nil}
 		return
 	}
-
-	dbuf, err := base64.StdEncoding.DecodeString(args.Bufb64)
-	if err != nil {
-		cResp <- &Response{nil, tag, err}
-		return
-	}
-	_, err = f.Write(dbuf)
+	_, err = f.Write(args.Buf)
 	if err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
