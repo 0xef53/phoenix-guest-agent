@@ -12,3 +12,6 @@ install: all
 
 clean:
 	rm -Rf $(GOPATH)/bin $(GOPATH)/pkg
+
+fmt:
+	gofmt -w $(GOPATH)/src/phoenix-ga
