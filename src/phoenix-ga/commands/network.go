@@ -94,6 +94,57 @@ func IpAddrDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	cResp <- &Response{true, tag, nil}
 }
 
+type IPNet net.IPNet
+
+func (n IPNet) MarshalJSON() ([]byte, error) {
+	t := struct {
+		IP   net.IP `json:"ip"`
+		Mask net.IP `json:"mask"`
+	}{
+		IP:   n.IP,
+		Mask: net.IP(n.Mask),
+	}
+	return json.Marshal(t)
+}
+
+type Route struct {
+	Ifname string        `json:"ifname"`
+	Scope  netlink.Scope `json:"scope"`
+	Dst    *IPNet        `json:"dst"`
+	Src    net.IP        `json:"src"`
+	Gw     net.IP        `json:"gateway"`
+}
+
+func GetRouteList(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+	args := &struct {
+		Ifname string `json:"ifname"`
+		Family string `json:"family"`
+	}{}
+	json.Unmarshal(*rawArgs, &args)
+	rlist, err := netlink.RouteList(nil, 4)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	rlist2 := make([]Route, 0, len(rlist))
+	for _, r := range rlist {
+		link, _ := net.InterfaceByIndex(r.LinkIndex)
+		var n IPNet
+		if r.Dst != nil {
+			n = IPNet(*r.Dst)
+		}
+		r2 := Route{
+			Ifname: link.Name,
+			Scope:  r.Scope,
+			Dst:    &n,
+			Src:    r.Src,
+			Gw:     r.Gw,
+		}
+		rlist2 = append(rlist2, r2)
+	}
+	cResp <- &Response{rlist2, tag, nil}
+}
+
 func NetIfaceUp(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Ifname string `json:"ifname"`
