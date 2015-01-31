@@ -7,6 +7,8 @@ import (
 var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
 	"get-netifaces":     GetNetIfaces,
 	"get-route-list":    GetRouteList,
+	"route-add":         RouteAdd,
+	"route-del":         RouteDel,
 	"fs-freeze":         FsFreeze,
 	"fs-unfreeze":       FsUnFreeze,
 	"get-freeze-status": GetFreezeStatus,

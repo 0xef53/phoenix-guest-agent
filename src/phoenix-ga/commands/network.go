@@ -145,6 +145,64 @@ func GetRouteList(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) 
 	cResp <- &Response{rlist2, tag, nil}
 }
 
+func NewNetlinkRoute(ifname, dst, src, gw string) (*netlink.Route, error) {
+	link, err := netlink.LinkByName(ifname)
+	if err != nil {
+		return nil, err
+	}
+	dstNet, err := netlink.ParseIPNet(dst)
+	if err != nil {
+		return nil, err
+	}
+	r := netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Dst:       dstNet,
+		Src:       net.ParseIP(src),
+		Gw:        net.ParseIP(gw),
+	}
+	return &r, nil
+}
+
+func RouteAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+	args := &struct {
+		Ifname string `json:"ifname"`
+		Dst    string `json:"dst"`
+		Src    string `json:"src"`
+		Gw     string `json:"gateway"`
+	}{}
+	json.Unmarshal(*rawArgs, &args)
+	route, err := NewNetlinkRoute(args.Ifname, args.Dst, args.Src, args.Gw)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	if err := netlink.RouteAdd(route); err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	cResp <- &Response{true, tag, nil}
+}
+
+func RouteDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
+	args := &struct {
+		Ifname string `json:"ifname"`
+		Dst    string `json:"dst"`
+		Src    string `json:"src"`
+		Gw     string `json:"gateway"`
+	}{}
+	json.Unmarshal(*rawArgs, &args)
+	route, err := NewNetlinkRoute(args.Ifname, args.Dst, args.Src, args.Gw)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	if err := netlink.RouteDel(route); err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	cResp <- &Response{true, tag, nil}
+}
+
 func NetIfaceUp(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Ifname string `json:"ifname"`
