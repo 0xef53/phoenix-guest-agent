@@ -117,11 +117,15 @@ type Route struct {
 
 func GetRouteList(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Ifname string `json:"ifname"`
-		Family string `json:"family"`
+		Family int `json:"family"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-	rlist, err := netlink.RouteList(nil, 4)
+	var family int
+	switch args.Family {
+	case netlink.FAMILY_ALL, netlink.FAMILY_V4, netlink.FAMILY_V6:
+		family = args.Family
+	}
+	rlist, err := netlink.RouteList(nil, family)
 	if err != nil {
 		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
