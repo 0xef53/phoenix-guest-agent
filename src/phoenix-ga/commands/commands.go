@@ -5,27 +5,26 @@ import (
 )
 
 var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
-	"get-netifaces":        GetNetIfaces,
-	"get-default-gateways": GetDefaultGateways,
-	"fs-freeze":            FsFreeze,
-	"fs-unfreeze":          FsUnFreeze,
-	"get-freeze-status":    GetFreezeStatus,
-	"ipaddr-add":           IpAddrAdd,
-	"ipaddr-del":           IpAddrDel,
-	"net-iface-up":         NetIfaceUp,
-	"net-iface-down":       NetIfaceDown,
-	"linux-ipaddr-add":     IpAddrAdd, // Deprecated since ver. 0.4
-	"linux-ipaddr-del":     IpAddrDel, // Deprecated since ver. 0.4
-	"file-open":            FileOpen,
-	"file-close":           FileClose,
-	"file-read":            FileRead,
-	"file-write":           FileWrite,
-	"get-file-md5sum":      GetFileMd5sum,
-	"directory-create":     DirectoryCreate,
-	"directory-list":       DirectoryList,
-	"file-chmod":           FileChmod,
-	"file-chown":           FileChown,
-	"file-stat":            FileStat,
+	"get-netifaces":     GetNetIfaces,
+	"fs-freeze":         FsFreeze,
+	"fs-unfreeze":       FsUnFreeze,
+	"get-freeze-status": GetFreezeStatus,
+	"ipaddr-add":        IpAddrAdd,
+	"ipaddr-del":        IpAddrDel,
+	"net-iface-up":      NetIfaceUp,
+	"net-iface-down":    NetIfaceDown,
+	"linux-ipaddr-add":  IpAddrAdd, // Deprecated since ver. 0.4
+	"linux-ipaddr-del":  IpAddrDel, // Deprecated since ver. 0.4
+	"file-open":         FileOpen,
+	"file-close":        FileClose,
+	"file-read":         FileRead,
+	"file-write":        FileWrite,
+	"get-file-md5sum":   GetFileMd5sum,
+	"directory-create":  DirectoryCreate,
+	"directory-list":    DirectoryList,
+	"file-chmod":        FileChmod,
+	"file-chown":        FileChown,
+	"file-stat":         FileStat,
 }
 
 type Response struct {

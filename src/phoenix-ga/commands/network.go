@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net"
 	"os"
-	"syscall"
-	"unsafe"
 
 	"github.com/vishvananda/netlink"
 )
@@ -94,50 +92,6 @@ func IpAddrDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		return
 	}
 	cResp <- &Response{true, tag, nil}
-}
-
-func GetDefaultGateways(cResp chan<- *Response, args *json.RawMessage, tag string) {
-	tab, err := syscall.NetlinkRIB(syscall.RTM_GETROUTE, syscall.AF_UNSPEC)
-	if err != nil {
-		cResp <- &Response{nil, tag, os.NewSyscallError("netlink rib", err)}
-		return
-	}
-	msgs, err := syscall.ParseNetlinkMessage(tab)
-	if err != nil {
-		cResp <- &Response{nil, tag, os.NewSyscallError("netlink message", err)}
-		return
-	}
-	var gateways []string
-	var ip net.IP
-loop:
-	for _, m := range msgs {
-		switch m.Header.Type {
-		case syscall.NLMSG_DONE:
-			break loop
-		case syscall.RTM_NEWROUTE:
-			msg := (*syscall.RtMsg)(unsafe.Pointer(&m.Data[0]))
-			// Leave only default routes from main table
-			if msg.Table != syscall.RT_TABLE_MAIN || msg.Dst_len != 0 {
-				continue
-			}
-			// Leave only ipv4/ipv6 routes
-			if msg.Family != syscall.AF_INET && msg.Family != syscall.AF_INET6 {
-				continue
-			}
-			attrs, err := syscall.ParseNetlinkRouteAttr(&m)
-			if err != nil {
-				cResp <- &Response{nil, tag, os.NewSyscallError("netlink message payload", err)}
-				return
-			}
-			for _, attr := range attrs {
-				if attr.Attr.Type == syscall.RTA_GATEWAY {
-					ip = net.IP(attr.Value)
-					gateways = append(gateways, ip.String())
-				}
-			}
-		}
-	}
-	cResp <- &Response{&gateways, tag, nil}
 }
 
 func NetIfaceUp(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
