@@ -9,15 +9,12 @@ var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
 	"get-route-list":    GetRouteList,
 	"route-add":         RouteAdd,
 	"route-del":         RouteDel,
-	"fs-freeze":         FsFreeze,
-	"fs-unfreeze":       FsUnFreeze,
-	"get-freeze-status": GetFreezeStatus,
 	"ipaddr-add":        IpAddrAdd,
 	"ipaddr-del":        IpAddrDel,
-	"net-iface-up":      NetIfaceUp,
-	"net-iface-down":    NetIfaceDown,
 	"linux-ipaddr-add":  IpAddrAdd, // Deprecated since ver. 0.4
 	"linux-ipaddr-del":  IpAddrDel, // Deprecated since ver. 0.4
+	"net-iface-up":      NetIfaceUp,
+	"net-iface-down":    NetIfaceDown,
 	"file-open":         FileOpen,
 	"file-close":        FileClose,
 	"file-read":         FileRead,
@@ -28,6 +25,9 @@ var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
 	"file-chmod":        FileChmod,
 	"file-chown":        FileChown,
 	"file-stat":         FileStat,
+	"fs-freeze":         FsFreeze,
+	"fs-unfreeze":       FsUnFreeze,
+	"get-freeze-status": GetFreezeStatus,
 }
 
 type Response struct {
