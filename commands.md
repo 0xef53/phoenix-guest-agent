@@ -260,16 +260,6 @@ Unfreeze all frozen guest file systems.
        }
 
 
-### get-default-gateways
-
-**Return:** list of default gateways for IPv4/IPv6 families.
-
-**Example:**
-
-    -> { "execute": "get-default-gateways" }
-    <- { "return": ["10.11.11.11"] }
-
-
 ### ipaddr-add
 
 Add the IP-address to the network interface in the guest system.
@@ -279,13 +269,13 @@ The old name `linux-ipaddr-add` is also available, but is deprecated.
 **Arguments:** 
 
 - `ip` -- an IP-address in CIDR format
-- `dev` -- a network interface name
+- `ifname` -- a network interface name
 
 **Returns:** true on success
 
 **Example:**
 
-    -> { "execute": "linux-ipaddr-add", "arguments": { "ip": "192.168.55.77/32", "dev": "eth0" } }
+    -> { "execute": "linux-ipaddr-add", "arguments": { "ip": "192.168.55.77/32", "ifname": "eth0" } }
     <- { "return": true }
 
 
@@ -298,13 +288,13 @@ The old name `linux-ipaddr-del` is also available, but is deprecated.
 **Arguments:** 
 
 - `ip` -- an IP-address in CIDR format
-- `dev` -- a network interface name
+- `ifname` -- a network interface name
 
 **Returns:** true on success
 
 **Example:**
 
-    -> { "execute": "linux-ipaddr-del", "arguments": { "ip": "192.168.55.77/32", "dev": "eth0" } }
+    -> { "execute": "linux-ipaddr-del", "arguments": { "ip": "192.168.55.77/32", "ifname": "eth0" } }
     <- { "return": true }
 
 
@@ -314,13 +304,13 @@ Bring up the specified network interface in the guest system.
 
 **Arguments:** 
 
-- `dev` -- a network interface name
+- `ifname` -- a network interface name
 
 **Returns:** true on success
 
 **Example:**
 
-    -> { "execute": "net-iface-up", "arguments": { "dev": "eth1" } }
+    -> { "execute": "net-iface-up", "arguments": { "ifname": "eth1" } }
     <- { "return": true }
 
 
@@ -330,11 +320,86 @@ Bring down the specified network interface in the guest system.
 
 **Arguments:** 
 
-- `dev` -- a network interface name
+- `ifname` -- a network interface name
 
 **Returns:** true on success
 
 **Example:**
 
-    -> { "execute": "net-iface-down", "arguments": { "dev": "eth1" } }
+    -> { "execute": "net-iface-down", "arguments": { "ifname": "eth1" } }
     <- { "return": true }
+
+
+### get-route-list
+
+**Arguments:** 
+
+- `family` -- an integer representation of family type from linux/socket.h: AF_UNSPEC, AF_INET or AF_INET6. Default is AF_UNSPEC
+
+**Returns:** a list of routing table entries
+
+**Example:**
+
+    -> { "execute": "get-route-list", "arguments": { "family": 2 } }
+    <- { "return": [
+           { "ifname": "eth0",
+             "scope": 0,
+             "dst": { "ip": "","mask": "" },
+             "src": "",
+             "gateway": "10.11.11.11"
+           },
+           { "ifname": "eth0",
+             "scope": 253,
+             "dst": { "ip": "10.11.11.11", "mask": "255.255.255.255" },
+             "src": "",
+             "gateway": ""
+           } ]
+       }
+
+This output is equivalent to:
+
+    $ ip route show
+    default via 10.11.11.11 dev eth0
+    10.11.11.11 dev eth0  scope link
+
+
+### route-add
+
+Add a new entry to the routing table in the guest system.
+
+**Arguments:** 
+
+- `ifname` -- a name of output interface
+- `dst` -- a destination prefix of the route
+- `src` -- a source address to prefer when sending to the destinations covered by the route prefix
+- `gateway` -- an address of the nexthop router
+
+**Returns:** true on success
+
+**Example:**
+
+    -> { "execute": "route-add", "arguments": { "ifname": "eth1", "dst": "8.8.8.8/32", "src": "", "gateway": "10.0.0.254" } }
+    <- { "return": true }
+
+This command is identical to `ip route add 8.8.8.8/32 via 10.0.0.254`
+
+
+### route-del
+
+Remove an entry from the routing table in the guest system.
+
+**Arguments:** 
+
+- `ifname` -- a name of output interface
+- `dst` -- a destination prefix of the route
+- `src` -- a source address to prefer when sending to the destinations covered by the route prefix
+- `gateway` -- an address of the nexthop router
+
+**Returns:** true on success
+
+**Example:**
+
+    -> { "execute": "route-del", "arguments": { "ifname": "eth0", "dst": "172.16.1.0/22", "src": "", "gateway": "10.0.0.254" } }
+    <- { "return": true }
+
+This command is identical to `ip route del 172.16.1.0/22 via 10.0.0.254`

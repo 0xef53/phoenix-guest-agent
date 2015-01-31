@@ -1,6 +1,9 @@
+version 0.5:
+
+    - Added functions to manage routing table.
+
 version 0.4:
 
-    - Functions IpAddrAdd() and IpAddrDel() have been rewritten with using docker netlink.
     - Added functions to Up/Down a network interface.
 
 version 0.3:
