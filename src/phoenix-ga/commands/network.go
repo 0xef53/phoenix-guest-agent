@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/docker/libcontainer/network"
+	"github.com/vishvananda/netlink"
 )
 
 type NetIf struct {
@@ -46,14 +46,28 @@ func GetNetIfaces(cResp chan<- *Response, args *json.RawMessage, tag string) {
 	cResp <- &Response{&iflist, tag, nil}
 }
 
+func NewRTNetlinkError(err error) error {
+	return os.NewSyscallError("rtnetlink", err)
+}
+
 func IpAddrAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Dev    string `json:"dev"`
+		Ifname string `json:"ifname"`
 		IpCidr string `json:"ip"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-	if err := network.SetInterfaceIp(args.Dev, args.IpCidr); err != nil {
-		cResp <- &Response{nil, tag, err}
+	iface, err := netlink.LinkByName(args.Ifname)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	ip, err := netlink.ParseAddr(args.IpCidr)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	if err := netlink.AddrAdd(iface, ip); err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
 	}
 	cResp <- &Response{true, tag, nil}
@@ -61,12 +75,22 @@ func IpAddrAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 
 func IpAddrDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Dev    string `json:"dev"`
+		Ifname string `json:"ifname"`
 		IpCidr string `json:"ip"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-	if err := network.DeleteInterfaceIp(args.Dev, args.IpCidr); err != nil {
-		cResp <- &Response{nil, tag, err}
+	iface, err := netlink.LinkByName(args.Ifname)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	ip, err := netlink.ParseAddr(args.IpCidr)
+	if err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
+		return
+	}
+	if err := netlink.AddrDel(iface, ip); err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
 	}
 	cResp <- &Response{true, tag, nil}
@@ -118,11 +142,12 @@ loop:
 
 func NetIfaceUp(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Dev string `json:"dev"`
+		Ifname string `json:"ifname"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-	if err := network.InterfaceUp(args.Dev); err != nil {
-		cResp <- &Response{nil, tag, err}
+	iface := &netlink.Device{netlink.LinkAttrs{Name: args.Ifname}}
+	if err := netlink.LinkSetUp(iface); err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
 	}
 	cResp <- &Response{true, tag, nil}
@@ -130,11 +155,12 @@ func NetIfaceUp(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 
 func NetIfaceDown(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Dev string `json:"dev"`
+		Ifname string `json:"ifname"`
 	}{}
 	json.Unmarshal(*rawArgs, &args)
-	if err := network.InterfaceDown(args.Dev); err != nil {
-		cResp <- &Response{nil, tag, err}
+	iface := &netlink.Device{netlink.LinkAttrs{Name: args.Ifname}}
+	if err := netlink.LinkSetDown(iface); err != nil {
+		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
 	}
 	cResp <- &Response{true, tag, nil}
