@@ -207,6 +207,8 @@ Change the file mode bits in the guest system.
 
 Sync and freeze all freezable local guest file systems.
 
+Since version 0.6 this command ignores file systems located on loop and dm devices. It's a necessary measure to prevent blockages due to multiple mounts of the same devices (e.g., bind mounts).
+
 **Returns:** true on success
 
 **Example:**

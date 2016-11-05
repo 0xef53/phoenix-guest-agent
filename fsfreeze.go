@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -46,6 +47,27 @@ func GetMountPoints() ([]MEntry, error) {
 			fields[2] == "smbfs" || fields[2] == "cifs" {
 			continue
 		}
+
+		// Ignoring the loop devices
+		if strings.HasPrefix(fields[0], "/dev/loop") {
+			continue
+		}
+		// Ignoring the dm- devices
+		st, err := os.Lstat(fields[0])
+		if err != nil {
+			return nil, err
+		}
+		if st.Mode()&os.ModeSymlink != 0 {
+			if s, err := os.Readlink(fields[0]); err != nil {
+				return nil, err
+			} else {
+				fields[0] = filepath.Base(s)
+			}
+		}
+		if strings.HasPrefix(fields[0], "dm-") {
+			continue
+		}
+
 		m = append(m, MEntry{fields[0], fields[1], fields[2]})
 	}
 	if err = scanner.Err(); err != nil {
@@ -75,6 +97,8 @@ func FsFreeze(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		return
 	}
 
+	FROZEN = true
+
 	for _, mp := range m {
 		fs, err := os.Open(mp.FSFile)
 		if err != nil {
@@ -91,8 +115,6 @@ func FsFreeze(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 
 		fs.Close()
 	}
-
-	FROZEN = true
 
 	cResp <- &Response{true, tag, nil}
 }
