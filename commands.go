@@ -1,4 +1,4 @@
-package commands
+package main
 
 import (
 	"encoding/json"
@@ -30,19 +30,28 @@ var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
 	"get-freeze-status": GetFreezeStatus,
 }
 
+type Request struct {
+	Command string           `json:"execute"`
+	RawArgs *json.RawMessage `json:"arguments"`
+	Tag     string           `json:"tag"`
+}
+
 type Response struct {
 	Value interface{}
 	Tag   string
 	Err   error
 }
 
-func GetCommands(cResp chan<- *Response, tag string) {
+func GetCommandList(cResp chan<- *Response, tag string) {
 	CmdList := make([]string, 0, 3+len(Commands))
+
 	for _, item := range []string{"get-commands", "agent-shutdown", "ping"} {
 		CmdList = append(CmdList, item)
 	}
+
 	for cmdName, _ := range Commands {
 		CmdList = append(CmdList, cmdName)
 	}
+
 	cResp <- &Response{&CmdList, tag, nil}
 }

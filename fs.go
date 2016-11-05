@@ -1,4 +1,4 @@
-package commands
+package main
 
 import (
 	"crypto/md5"
@@ -24,6 +24,7 @@ func NewFD() *FD {
 func (fd *FD) Add(f *os.File) {
 	fd.Lock()
 	defer fd.Unlock()
+
 	fd.h[fd.next] = f
 	fd.next += 1
 }
@@ -31,16 +32,19 @@ func (fd *FD) Add(f *os.File) {
 func (fd *FD) Get(id int) (f *os.File, err error) {
 	fd.RLock()
 	defer fd.RUnlock()
+
 	f, ok := fd.h[id]
 	if !ok {
 		return nil, fmt.Errorf("Incorrect handle id")
 	}
+
 	return f, nil
 }
 
 func (fd *FD) Del(id int) {
 	fd.Lock()
 	defer fd.Unlock()
+
 	if fd.h[id] != nil {
 		fd.h[id].Close()
 		delete(fd.h, id)
@@ -58,7 +62,11 @@ func FileOpen(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		Mode  string      `json:"mode"`
 		Perm  os.FileMode `json:"perm"`
 		Force bool        `json:"force"`
-	}{Perm: 0644, Force: false}
+	}{
+		Perm:  0644,
+		Force: false,
+	}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	switch args.Mode {
@@ -72,11 +80,14 @@ func FileOpen(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	default:
 		f, err = os.OpenFile(args.Path, os.O_RDONLY, 0)
 	}
+
 	if err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	FDStore.Add(f)
+
 	cResp <- &Response{(FDStore.next - 1), tag, nil}
 }
 
@@ -84,6 +95,7 @@ func FileRead(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Id int `json:"handle_id"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	f, err := FDStore.Get(args.Id)
@@ -91,17 +103,22 @@ func FileRead(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	buf := make([]byte, 4096)
 	eof := false
+
 	n, err := f.Read(buf)
-	if err == io.EOF {
+	switch err {
+	case nil:
+	case io.EOF:
 		f.Close()
 		FDStore.Del(args.Id)
 		eof = true
-	} else if err != nil {
+	default:
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	res := &struct {
 		Buf []byte `json:"bufb64"`
 		Eof bool   `json:"eof"`
@@ -109,6 +126,7 @@ func FileRead(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		[]byte(buf[:n]),
 		eof,
 	}
+
 	cResp <- &Response{res, tag, nil}
 }
 
@@ -118,22 +136,26 @@ func FileWrite(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		Buf []byte `json:"bufb64"`
 		Eof bool   `json:"eof"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
+
 	f, err := FDStore.Get(args.Id)
 	if err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	if args.Eof {
 		FDStore.Del(args.Id)
 		cResp <- &Response{true, tag, nil}
 		return
 	}
-	_, err = f.Write(args.Buf)
-	if err != nil {
+
+	if _, err := f.Write(args.Buf); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	cResp <- &Response{true, tag, nil}
 }
 
@@ -141,9 +163,11 @@ func FileClose(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Id int `json:"handle_id"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	FDStore.Del(args.Id)
+
 	cResp <- &Response{true, tag, nil}
 }
 
@@ -151,13 +175,17 @@ func DirectoryCreate(cResp chan<- *Response, rawArgs *json.RawMessage, tag strin
 	args := &struct {
 		Path string      `json:"path"`
 		Perm os.FileMode `json:"perm"`
-	}{Perm: 0755}
+	}{
+		Perm: 0755,
+	}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	if err := os.MkdirAll(args.Path, args.Perm); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	cResp <- &Response{true, tag, nil}
 }
 
@@ -166,12 +194,14 @@ func FileChmod(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		Path string      `json:"path"`
 		Perm os.FileMode `json:"perm"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	if err := os.Chmod(args.Path, args.Perm); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	cResp <- &Response{true, tag, nil}
 }
 
@@ -181,12 +211,14 @@ func FileChown(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		Uid  int    `json:"uid"`
 		Gid  int    `json:"gid"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	if err := os.Chown(args.Path, args.Uid, args.Gid); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	cResp <- &Response{true, tag, nil}
 }
 
@@ -200,6 +232,7 @@ func FileStat(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
 		Path string `json:"path"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	file, err := os.Lstat(args.Path)
@@ -207,6 +240,7 @@ func FileStat(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	cResp <- &Response{&FStat{file.Name(), file.IsDir(), file.Sys()}, tag, nil}
 }
 
@@ -214,7 +248,10 @@ func DirectoryList(cResp chan<- *Response, rawArgs *json.RawMessage, tag string)
 	args := &struct {
 		Path string `json:"path"`
 		N    int    `json:"n"`
-	}{N: -1}
+	}{
+		N: -1,
+	}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	dir, err := os.Open(args.Path)
@@ -222,15 +259,19 @@ func DirectoryList(cResp chan<- *Response, rawArgs *json.RawMessage, tag string)
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	files, err := dir.Readdir(args.N)
 	if err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	flist := make([]*FStat, 0, len(files))
+
 	for _, file := range files {
 		flist = append(flist, &FStat{file.Name(), file.IsDir(), file.Sys()})
 	}
+
 	cResp <- &Response{&flist, tag, nil}
 }
 
@@ -238,6 +279,7 @@ func GetFileMd5sum(cResp chan<- *Response, rawArgs *json.RawMessage, tag string)
 	args := &struct {
 		Path string `json:"path"`
 	}{}
+
 	json.Unmarshal(*rawArgs, &args)
 
 	f, err := os.Open(args.Path)
@@ -248,9 +290,11 @@ func GetFileMd5sum(cResp chan<- *Response, rawArgs *json.RawMessage, tag string)
 	defer f.Close()
 
 	hash := md5.New()
+
 	if _, err := io.Copy(hash, f); err != nil {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	cResp <- &Response{hex.EncodeToString(hash.Sum(nil)), tag, nil}
 }

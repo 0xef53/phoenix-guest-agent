@@ -1,4 +1,4 @@
-package commands
+package main
 
 import (
 	"bufio"
@@ -39,6 +39,7 @@ func GetMountPoints() ([]MEntry, error) {
 	}
 
 	scanner := bufio.NewScanner(f)
+
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) < 2 || isExist(fields[0]) || fields[0][0] != '/' ||
@@ -50,6 +51,7 @@ func GetMountPoints() ([]MEntry, error) {
 	if err = scanner.Err(); err != nil {
 		return nil, err
 	}
+
 	return m, nil
 }
 
@@ -58,6 +60,7 @@ func ioctl(fd uintptr, request, argp uintptr) (err error) {
 	if errno != 0 {
 		err = errno
 	}
+
 	return os.NewSyscallError("ioctl", err)
 }
 
@@ -71,21 +74,26 @@ func FsFreeze(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	for _, mp := range m {
 		fs, err := os.Open(mp.FSFile)
 		if err != nil {
 			cResp <- &Response{nil, tag, err}
 			return
 		}
+
 		if err := ioctl(fs.Fd(), FIFREEZE, 0); err != nil &&
 			err.(*os.SyscallError).Err.(syscall.Errno) != syscall.EOPNOTSUPP &&
 			err.(*os.SyscallError).Err.(syscall.Errno) != syscall.EBUSY {
 			cResp <- &Response{nil, tag, err}
 			return
 		}
+
 		fs.Close()
 	}
+
 	FROZEN = true
+
 	cResp <- &Response{true, tag, nil}
 }
 
@@ -95,18 +103,23 @@ func FsUnFreeze(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 		cResp <- &Response{nil, tag, err}
 		return
 	}
+
 	for _, mp := range m {
 		fs, err := os.Open(mp.FSFile)
 		if err != nil {
 			cResp <- &Response{nil, tag, err}
 			return
 		}
+
 		if err := ioctl(fs.Fd(), FITHAW, 0); err != nil && err.(*os.SyscallError).Err.(syscall.Errno) != syscall.EINVAL {
 			cResp <- &Response{nil, tag, err}
 			return
 		}
+
 		fs.Close()
 	}
+
 	FROZEN = false
+
 	cResp <- &Response{true, tag, nil}
 }
