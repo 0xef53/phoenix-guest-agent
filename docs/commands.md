@@ -40,11 +40,72 @@ Shutdown the guest agent. If the agent started by the init process, it will be a
     <- { "return": true }
 
 
+### sysinfo
+
+**Returns:** summary information about the guest system: uptime, load average, utsname, logged in users, ram/swap usage, block devices stat, etc.
+
+**Example:**
+
+    -> { "execute": "sysinfo" }
+    <- {
+         "long_bit": 64,
+         "disks": [
+           {
+             "size_used": 621900,
+             "name": "/dev/vda",
+             "size_total": 5131008,
+             "size_avail": 4230592,
+             "is_mounted": true,
+             "mountpoint": "/"
+           },
+           {
+             "size_used": 42468,
+             "name": "/dev/vdb",
+             "size_total": 42468,
+             "size_avail": 0,
+             "is_mounted": true,
+             "mountpoint": "/lib/modules"
+           }
+         ],
+         "users": [
+           {
+             "device": "pts/0",
+             "host": "79.172.60.6",
+             "name": "root",
+             "login_time": 1478346362
+           }
+         ],
+         "ram": {
+           "buffer": 14928,
+           "total": 1032644,
+           "free": 838220
+         },
+         "uptime": 12488,
+         "uname": {
+           "sysname": "Linux",
+           "domain": "(none)",
+           "nodename": "vm-61b27f65",
+           "machine": "x86_64",
+           "version": "#66-Ubuntu SMP Wed Oct 19 14:12:37 UTC 2016",
+           "release": "4.4.0-45-generic"
+         },
+         "loadavg": {
+           "5m": 0.0087890625,
+           "15m": 0,
+           "1m": 0.0185546875
+         },
+         "swap": {
+           "total": 0,
+           "free": 0
+         }
+       }
+
+
 ### file-open
 
 Open a file in the guest system.
 
-**Arguments:** 
+**Arguments:**
 
 - `path` -- full path to the file in the guest system
 - `mode` -- "r" or "w". Default is "r"

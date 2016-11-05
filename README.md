@@ -12,6 +12,7 @@ the master.
 - working with guest's files and directories: reading/writing files, setting mode/uid/gid, creating directories, listing directories etc.
 - querying and setting network parameters: adding/removing IP-adresses, getting summary information.
 - freezing/thawing guest filesystems.
+- querying summary information about the guest: uptime, load average, utsname, logged in users, ram/swap usage, block devices stat, etc.
 
 
 ### How to use

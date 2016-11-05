@@ -5,6 +5,7 @@ import (
 )
 
 var Commands = map[string]func(chan<- *Response, *json.RawMessage, string){
+	"sysinfo":           GetSystemInfo,
 	"get-netifaces":     GetNetIfaces,
 	"get-route-list":    GetRouteList,
 	"route-add":         RouteAdd,
