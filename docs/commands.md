@@ -436,6 +436,7 @@ Add a new entry to the routing table in the guest system.
 - `dst` -- a destination prefix of the route
 - `src` -- a source address to prefer when sending to the destinations covered by the route prefix
 - `gateway` -- an address of the nexthop router
+- `scope` -- an address scope. Default is 0 (`RT_SCOPE_UNIVERSE`, see `man 7 rtnetlink`)
 
 **Returns:** true on success
 
@@ -457,6 +458,7 @@ Remove an entry from the routing table in the guest system.
 - `dst` -- a destination prefix of the route
 - `src` -- a source address to prefer when sending to the destinations covered by the route prefix
 - `gateway` -- an address of the nexthop router
+- `scope` -- an address scope. Default is 0 (`RT_SCOPE_UNIVERSE`, see `man 7 rtnetlink`)
 
 **Returns:** true on success
 
