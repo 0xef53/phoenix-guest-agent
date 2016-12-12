@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	VERSION = "0.7"
+	VERSION = "0.7.1"
 	LOGFILE = "/var/log/phoenix.log"
 )
 
