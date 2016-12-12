@@ -172,7 +172,7 @@ func GetRouteList(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) 
 	cResp <- &Response{rlist2, tag, nil}
 }
 
-func NewNetlinkRoute(ifname, dst, src, gw string) (*netlink.Route, error) {
+func NewNetlinkRoute(ifname, dst, src, gw string, scope netlink.Scope) (*netlink.Route, error) {
 	link, err := netlink.LinkByName(ifname)
 	if err != nil {
 		return nil, err
@@ -188,6 +188,7 @@ func NewNetlinkRoute(ifname, dst, src, gw string) (*netlink.Route, error) {
 		Dst:       dstNet,
 		Src:       net.ParseIP(src),
 		Gw:        net.ParseIP(gw),
+		Scope:     scope,
 	}
 
 	return &r, nil
@@ -195,15 +196,16 @@ func NewNetlinkRoute(ifname, dst, src, gw string) (*netlink.Route, error) {
 
 func RouteAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Ifname string `json:"ifname"`
-		Dst    string `json:"dst"`
-		Src    string `json:"src"`
-		Gw     string `json:"gateway"`
+		Ifname string        `json:"ifname"`
+		Dst    string        `json:"dst"`
+		Src    string        `json:"src"`
+		Gw     string        `json:"gateway"`
+		Scope  netlink.Scope `json:"scope"`
 	}{}
 
 	json.Unmarshal(*rawArgs, &args)
 
-	route, err := NewNetlinkRoute(args.Ifname, args.Dst, args.Src, args.Gw)
+	route, err := NewNetlinkRoute(args.Ifname, args.Dst, args.Src, args.Gw, args.Scope)
 	if err != nil {
 		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
@@ -219,15 +221,16 @@ func RouteAdd(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 
 func RouteDel(cResp chan<- *Response, rawArgs *json.RawMessage, tag string) {
 	args := &struct {
-		Ifname string `json:"ifname"`
-		Dst    string `json:"dst"`
-		Src    string `json:"src"`
-		Gw     string `json:"gateway"`
+		Ifname string        `json:"ifname"`
+		Dst    string        `json:"dst"`
+		Src    string        `json:"src"`
+		Gw     string        `json:"gateway"`
+		Scope  netlink.Scope `json:"scope"`
 	}{}
 
 	json.Unmarshal(*rawArgs, &args)
 
-	route, err := NewNetlinkRoute(args.Ifname, args.Dst, args.Src, args.Gw)
+	route, err := NewNetlinkRoute(args.Ifname, args.Dst, args.Src, args.Gw, args.Scope)
 	if err != nil {
 		cResp <- &Response{nil, tag, NewRTNetlinkError(err)}
 		return
