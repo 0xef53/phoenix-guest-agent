@@ -22,7 +22,7 @@ type SysInfo struct {
 	LongBit int           `json:"long_bit"` // getconf LONG_BIT
 	Uptime  time.Duration `json:"uptime"`   // time since boot
 	Loadavg LoadAverage   `json:"loadavg"`  // 1, 5, and 15 minute load averages
-	Ram     RamStat       `json:"ram"`      // memory stat (total/free/buffer) in kB
+	Mem     MemStat       `json:"ram"`      // memory stat (total/free/buffers/cached) in kB
 	Swap    SwapStat      `json:"swap"`     // swap stat (total/free) in kB
 	Users   []LoggedUser  `json:"users"`    // logged-in users from /var/run/utmp
 	Disks   []BlockDev    `json:"disks"`    // some disks stats
@@ -43,10 +43,12 @@ type LoadAverage struct {
 	Fifteen float64 `json:"15m"`
 }
 
-type RamStat struct {
-	Total  uint64 `json:"total"`
-	Free   uint64 `json:"free"`
-	Buffer uint64 `json:"buffer"`
+type MemStat struct {
+	Total     uint64 `json:"total"`
+	Free      uint64 `json:"free"`
+	Buffers   uint64 `json:"buffers"`
+	Cached    uint64 `json:"cached"`
+	FreeTotal uint64 `json:"free_total"`
 }
 
 type SwapStat struct {
@@ -134,11 +136,12 @@ func GetSystemInfo(cResp chan<- *Response, rawArgs *json.RawMessage, tag string)
 	sinfo.Loadavg.Five = float64(st.Loads[1]) / scale
 	sinfo.Loadavg.Fifteen = float64(st.Loads[2]) / scale
 
-	unit := uint64(st.Unit) * 1024 // kB
+	if err := getMemInfo(&sinfo.Mem); err != nil {
+		cResp <- &Response{nil, tag, err}
+		return
+	}
 
-	sinfo.Ram.Total = uint64(st.Totalram) / unit
-	sinfo.Ram.Free = uint64(st.Freeram) / unit
-	sinfo.Ram.Buffer = uint64(st.Bufferram) / unit
+	unit := uint64(st.Unit) * 1024 // kB
 
 	sinfo.Swap.Total = uint64(st.Totalswap) / unit
 	sinfo.Swap.Free = uint64(st.Freeswap) / unit
@@ -296,7 +299,47 @@ func getDisksInfo() ([]BlockDev, error) {
 	}
 
 	return disks, nil
+}
 
+func getMemInfo(mi *MemStat) error {
+	f, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+
+	// number of fields we're interested in
+	n := 4
+
+	for s.Scan() && n > 0 {
+		switch {
+		case bytes.HasPrefix(s.Bytes(), []byte(`MemTotal:`)):
+			_, err = fmt.Sscanf(s.Text(), "MemTotal:%d", &mi.Total)
+		case bytes.HasPrefix(s.Bytes(), []byte(`MemFree:`)):
+			_, err = fmt.Sscanf(s.Text(), "MemFree:%d", &mi.Free)
+		case bytes.HasPrefix(s.Bytes(), []byte(`Buffers:`)):
+			_, err = fmt.Sscanf(s.Text(), "Buffers:%d", &mi.Buffers)
+		case bytes.HasPrefix(s.Bytes(), []byte(`Cached:`)):
+			_, err = fmt.Sscanf(s.Text(), "Cached:%d", &mi.Cached)
+		default:
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		n--
+	}
+	if err = s.Err(); err != nil {
+		return err
+	}
+
+	mi.FreeTotal = mi.Free + mi.Buffers + mi.Cached
+
+	return nil
 }
 
 func parseMounts() (map[string]string, error) {
