@@ -1,0 +1,6 @@
+.DS_Store
+debug/
+bin/
+packages/
+vendor/
+deploy

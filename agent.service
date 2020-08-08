@@ -1,0 +1,12 @@
+[Unit]
+Description=A guest-side agent for qemu-kvm virtual machines
+After=systemd-udevd.service network.target
+
+[Service]
+Restart=always
+RestartSec=1
+
+ExecStart=/usr/sbin/phoenix-ga
+
+[Install]
+WantedBy=multi-user.target

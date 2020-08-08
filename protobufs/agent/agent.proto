@@ -1,0 +1,204 @@
+syntax = "proto3";
+
+package agent;
+
+//import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = ".;agentpb";
+
+message GuestInfo {
+    message Utsname {
+        string sysname = 1;
+        string nodename = 2;
+        string release = 3;
+        string version = 4;
+        string machine = 5;
+        string domainname = 6;
+    }
+    message LoadAverage {
+        double one = 1;
+        double five = 2;
+        double fifteen = 3;
+    }
+    message MemStat {
+        uint64 total = 1;
+        uint64 free = 2;
+        uint64 buffers = 3;
+        uint64 cached = 4;
+        uint64 free_total = 5;
+    }
+    message SwapStat {
+        uint64 total = 1;
+        uint64 free = 2;
+    }
+    message LoggedUser {
+        string name = 1;
+        string device = 2;
+        string host = 3;
+        int64 login_time = 4;
+    }
+    message BlockDevice {
+        string path = 1;
+        bool is_mounted = 2;
+        string mount_point = 3;
+        int64 size_total = 4;
+        int64 size_used = 5;
+        int64 size_avail = 6;
+    }
+    Utsname uname = 1;
+    int64 uptime = 2;
+    LoadAverage loadavg = 3;
+    MemStat mem = 4;
+    SwapStat swap = 5;
+    repeated LoggedUser users = 6;
+    repeated BlockDevice block_devices = 7;
+}
+
+message AgentInfo {
+    string version = 1;
+    bool is_locked = 2;
+}
+
+enum InetFamily {
+    AF_UNSPECIFIED = 0;
+    AF_INET = 2;
+    AF_INET6 = 10;
+}
+
+message RouteListRequest {
+    InetFamily family = 1;
+}
+
+enum RouteScope {
+    SCOPE_UNIVERSE = 0;
+    SCOPE_SITE = 200;
+    SCOPE_LINK = 253;
+    SCOPE_HOST = 254;
+    SCOPE_NOWHERE = 255;
+}
+
+message RouteInfo {
+    int32 link_index = 1;
+    string link_name = 2;
+    RouteScope scope = 3;
+    string dst = 4;
+    string src = 5;
+    string gw = 6;
+    int32 table = 7;
+}
+
+message RouteList {
+    repeated RouteInfo routes = 1;
+}
+
+message RouteRequest {
+    string link_name = 1;
+    RouteScope scope = 2;
+    string dst = 3;
+    string src = 4;
+    string gw = 5;
+    int32 table = 6;
+}
+
+message InterfaceInfo {
+    int32 index = 1;
+    string name = 2;
+    string hw_addr = 3;
+    uint32 flags = 4;
+    int32 mtu = 5 [(gogoproto.customname) = "MTU"];
+    repeated string addrs = 6;
+}
+
+message InterfaceList {
+    repeated InterfaceInfo interfaces = 1;
+}
+
+message LinkNameRequest {
+    string name = 1;
+}
+
+message IPAddrRequest {
+    string link_name = 1;
+    string addr = 2;
+}
+
+message FileRequest {
+    string path = 1;
+    string owner = 2;
+    string group = 3;
+    uint32 mode = 4;
+}
+
+message FileStatRequest {
+    string path = 1;
+    bool with_dir_content = 2;
+}
+
+message FileMD5Hash {
+    string hash = 1;
+}
+
+message FileStat {
+    message Owner {
+        uint32 uid = 1;
+        string name = 2;
+    }
+    message Group {
+        uint32 gid = 1;
+        string name = 2;
+    }
+    string name = 1;
+    uint32 mode = 2;
+    bool is_dir = 3;
+    Owner owner = 4;
+    Group group = 5;
+    int64 size_bytes = 6;
+}
+
+message FileStatList {
+    repeated FileStat files = 1;
+}
+
+message UploadFileRequest {
+    message FileInfo {
+        string path = 1;
+    }
+    oneof data {
+        FileInfo info = 1;
+        bytes chunk_data = 2;
+    };
+}
+
+message FileContent {
+    bytes chunk_data = 1;
+}
+
+service AgentService {
+    rpc GetGuestInfo(google.protobuf.Empty) returns (GuestInfo) { }
+
+    rpc GetRouteList(RouteListRequest) returns (RouteList) { }
+    rpc AddRoute(RouteRequest) returns (RouteInfo) { }
+    rpc DelRoute(RouteRequest) returns (RouteInfo) { }
+    rpc GetInterfaces(google.protobuf.Empty) returns (InterfaceList) { }
+    rpc SetInterfaceLinkUp(LinkNameRequest) returns (google.protobuf.Empty) { }
+    rpc SetInterfaceLinkDown(LinkNameRequest) returns (google.protobuf.Empty) { }
+    rpc AddIPAddr(IPAddrRequest) returns (google.protobuf.Empty) { }
+    rpc DelIPAddr(IPAddrRequest) returns (google.protobuf.Empty) { }
+
+    rpc FreezeFileSystems(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+    rpc UnfreezeFileSystems(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+
+    rpc GetFileMD5Hash(FileRequest) returns (FileMD5Hash) { }
+    rpc GetFileStat(FileStatRequest) returns (FileStatList) { }
+    rpc SetFileOwner(FileRequest) returns (google.protobuf.Empty) { }
+    rpc SetFileMode(FileRequest) returns (google.protobuf.Empty) { }
+    rpc CreateDir(FileRequest) returns (google.protobuf.Empty) { }
+
+    rpc UploadFile(stream UploadFileRequest) returns (google.protobuf.Empty) {}
+    rpc DownloadFile(FileRequest) returns (stream FileContent) {}
+
+    rpc GetAgentInfo(google.protobuf.Empty) returns (AgentInfo) { }
+    rpc ShutdownAgent(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+}
