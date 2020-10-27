@@ -46,6 +46,9 @@ message GuestInfo {
         int64 size_total = 4;
         int64 size_used = 5;
         int64 size_avail = 6;
+        int64 inodes_total = 7;
+        int64 inodes_used = 8;
+        int64 inodes_avail = 9;
     }
     Utsname uname = 1;
     int64 uptime = 2;

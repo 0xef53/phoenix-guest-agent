@@ -225,6 +225,9 @@ func getBlkdevStat() ([]*pb.GuestInfo_BlockDevice, error) {
 			d.SizeTotal = (int64(st.Bsize) * int64(st.Blocks)) / 1024
 			d.SizeUsed = d.SizeTotal - (int64(st.Bsize)*int64(st.Bfree))/1024
 			d.SizeAvail = (int64(st.Bsize) * int64(st.Bavail)) / 1024
+			d.InodesTotal = int64(st.Files)
+			d.InodesUsed = int64(st.Files - st.Ffree)
+			d.InodesAvail = int64(st.Ffree)
 		}
 
 		devices = append(devices, &d)
