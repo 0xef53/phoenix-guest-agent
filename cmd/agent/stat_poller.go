@@ -191,7 +191,9 @@ func getBlkdevStat() ([]*pb.GuestInfo_BlockDevice, error) {
 			if len(fields) < 2 {
 				continue
 			}
-			mm[fields[0]] = fields[1]
+			if _, ok := mm[fields[0]]; !ok {
+				mm[fields[0]] = fields[1]
+			}
 		}
 		if err = scanner.Err(); err != nil {
 			return nil, err
