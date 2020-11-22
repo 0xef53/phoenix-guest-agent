@@ -1,51 +1,97 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
+	"runtime"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 )
 
 const VERSION = "1.0.1"
+const DEFAULT_SERIAL_PORT = "/dev/virtio-ports/org.guest-agent.0"
 
 func main() {
-	var portPath string = "/dev/virtio-ports/org.guest-agent.0"
-	var legacyMode bool
-	var withoutSSH bool
-	var verboseMode bool
-	var printVer bool
-
-	flag.StringVar(&portPath, "p", portPath, "`path` to the virtio serial port")
-	flag.BoolVar(&withoutSSH, "without-ssh", withoutSSH, "do not run the internal SSH server")
-	flag.BoolVar(&legacyMode, "legacy", legacyMode, "use legacy mode instead of VM sockets")
-	flag.BoolVar(&verboseMode, "v", verboseMode, "enable debug/verbose mode")
-	flag.BoolVar(&printVer, "version", printVer, "print version information and quit")
-
-	flag.Parse()
-
-	if printVer {
-		fmt.Println("Version:", VERSION)
-		os.Exit(2)
-	}
-
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors:    true,
 		DisableTimestamp: true,
 	})
 
-	if verboseMode {
-		log.SetLevel(log.DebugLevel)
+	app := cli.NewApp()
+	app.Usage = "A guest-side agent for qemu-kvm virtual machines"
+	app.HideHelpCommand = true
+
+	// If no arguments provided
+	app.Action = func(c *cli.Context) error {
+		if c.IsSet("verbose") {
+			log.SetLevel(log.DebugLevel)
+		}
+		agent := Agent{
+			SerialPort: DEFAULT_SERIAL_PORT,
+		}
+		return agent.Serve()
 	}
 
-	agent := Agent{
-		WithoutSSH: withoutSSH,
-		LegacyMode: legacyMode,
-		SerialPort: portPath,
+	app.Flags = []cli.Flag{
+		&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "enable debug/verbose mode"},
 	}
 
-	if err := agent.Serve(); err != nil {
+	app.Commands = []*cli.Command{
+		// AGENT
+		&cli.Command{
+			Name:  "serve",
+			Usage: "run Guest Agent application",
+			Flags: []cli.Flag{
+				&cli.BoolFlag{Name: "without-ssh", Usage: "do not run the internal SSH server"},
+				&cli.BoolFlag{Name: "legacy", Usage: "use legacy mode instead of VM sockets"},
+				&cli.StringFlag{Name: "path", Aliases: []string{"p"}, Value: DEFAULT_SERIAL_PORT, Usage: "path to the virtio serial port"},
+			},
+			Action: func(c *cli.Context) error {
+				if c.IsSet("verbose") {
+					log.SetLevel(log.DebugLevel)
+				}
+				agent := Agent{
+					WithoutSSH: c.Bool("without-ssh"),
+					LegacyMode: c.Bool("legacy"),
+					SerialPort: c.String("path"),
+				}
+				return agent.Serve()
+			},
+		},
+		// NETINIT
+		&cli.Command{
+			Name:  "netinit",
+			Usage: "configure/deconfigure network interfaces",
+			Flags: []cli.Flag{
+				&cli.StringFlag{Name: "configure-iface", Usage: "bring the interface up and add IP addresses"},
+				&cli.StringFlag{Name: "deconfigure-iface", Usage: "flush all IP addresses and bring the interface down"},
+			},
+			Action: func(c *cli.Context) error {
+				if c.IsSet("verbose") {
+					log.SetLevel(log.DebugLevel)
+				}
+				switch {
+				case c.IsSet("configure-iface"):
+					return netinitConfigureInterface(c.String("configure-iface"))
+				case c.IsSet("deconfigure-iface"):
+					return netinitDeconfigureInterface(c.String("deconfigure-iface"))
+				}
+				return nil
+			},
+		},
+		// VERSION
+		&cli.Command{
+			Name:  "version",
+			Usage: "print the version information",
+			Action: func(c *cli.Context) error {
+				fmt.Printf("v%s, (built %s)\n", VERSION, runtime.Version())
+				return nil
+			},
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
 		log.Fatalln(err)
 	}
 }

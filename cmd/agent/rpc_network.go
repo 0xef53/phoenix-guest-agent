@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	pb "github.com/0xef53/phoenix-guest-agent/protobufs/agent"
 
@@ -50,45 +51,21 @@ func (s *AgentServiceServer) GetRouteList(ctx context.Context, req *pb.RouteList
 }
 
 func (s *AgentServiceServer) AddRoute(ctx context.Context, req *pb.RouteRequest) (*pb.RouteInfo, error) {
-	return updateRouteTable("add", req)
+	return s.updateRouteTable(ctx, "add", req)
 }
 
 func (s *AgentServiceServer) DelRoute(ctx context.Context, req *pb.RouteRequest) (*pb.RouteInfo, error) {
-	return updateRouteTable("del", req)
+	return s.updateRouteTable(ctx, "del", req)
 }
 
-func updateRouteTable(action string, req *pb.RouteRequest) (*pb.RouteInfo, error) {
-	// Build netlink route struct
+func (s *AgentServiceServer) updateRouteTable(ctx context.Context, action string, req *pb.RouteRequest) (*pb.RouteInfo, error) {
 	link, err := netlink.LinkByName(req.LinkName)
 	if err != nil {
 		return nil, os.NewSyscallError("rtnetlink", err)
 	}
 
-	dstNet, err := netlink.ParseIPNet(req.Dst)
-	if err != nil {
+	if err := updateRouteTable(action, link, req.Dst, req.Src, req.Gw, netlink.Scope(req.Scope), int(req.Table)); err != nil {
 		return nil, err
-	}
-
-	r := netlink.Route{
-		LinkIndex: link.Attrs().Index,
-		Dst:       dstNet,
-		Src:       net.ParseIP(req.Src),
-		Gw:        net.ParseIP(req.Gw),
-		Scope:     netlink.Scope(req.Scope),
-		Table:     int(req.Table),
-	}
-
-	switch action {
-	case "add":
-		if err := netlink.RouteAdd(&r); err != nil {
-			return nil, os.NewSyscallError("rtnetlink", err)
-		}
-	case "del":
-		if err := netlink.RouteDel(&r); err != nil {
-			return nil, os.NewSyscallError("rtnetlink", err)
-		}
-	default:
-		return nil, fmt.Errorf("invalid action: %s", action)
 	}
 
 	return &pb.RouteInfo{
@@ -100,6 +77,41 @@ func updateRouteTable(action string, req *pb.RouteRequest) (*pb.RouteInfo, error
 		Table:     req.Table,
 		Scope:     req.Scope,
 	}, nil
+}
+
+func updateRouteTable(action string, link netlink.Link, dst, src, gw string, scope netlink.Scope, table int) error {
+	dstNet, err := netlink.ParseIPNet(dst)
+	if err != nil {
+		return err
+	}
+
+	r := netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Dst:       dstNet,
+		Src:       net.ParseIP(src),
+		Gw:        net.ParseIP(gw),
+		Scope:     scope,
+		Table:     table,
+	}
+
+	switch action {
+	case "add":
+		if err := netlink.RouteAdd(&r); err != nil {
+			return os.NewSyscallError("rtnetlink", err)
+		}
+	case "replace":
+		if err := netlink.RouteReplace(&r); err != nil {
+			return os.NewSyscallError("rtnetlink", err)
+		}
+	case "del":
+		if err := netlink.RouteDel(&r); err != nil {
+			return os.NewSyscallError("rtnetlink", err)
+		}
+	default:
+		return fmt.Errorf("invalid action: %s", action)
+	}
+
+	return nil
 }
 
 func (s *AgentServiceServer) GetInterfaces(ctx context.Context, req *empty.Empty) (*pb.InterfaceList, error) {
@@ -135,27 +147,43 @@ func (s *AgentServiceServer) GetInterfaces(ctx context.Context, req *empty.Empty
 }
 
 func (s *AgentServiceServer) SetInterfaceLinkUp(ctx context.Context, req *pb.LinkNameRequest) (*empty.Empty, error) {
-	iface := &netlink.Device{netlink.LinkAttrs{Name: req.Name}}
-
-	if err := netlink.LinkSetUp(iface); err != nil {
-		return nil, os.NewSyscallError("rtnetlink", err)
+	if err := setInterfaceLinkUp(req.Name); err != nil {
+		return nil, err
 	}
 
 	return new(empty.Empty), nil
+}
+
+func setInterfaceLinkUp(name string) error {
+	iface := &netlink.Device{netlink.LinkAttrs{Name: name}}
+
+	if err := netlink.LinkSetUp(iface); err != nil {
+		return os.NewSyscallError("rtnetlink", err)
+	}
+
+	return nil
 }
 
 func (s *AgentServiceServer) SetInterfaceLinkDown(ctx context.Context, req *pb.LinkNameRequest) (*empty.Empty, error) {
-	iface := &netlink.Device{netlink.LinkAttrs{Name: req.Name}}
-
-	if err := netlink.LinkSetDown(iface); err != nil {
-		return nil, os.NewSyscallError("rtnetlink", err)
+	if err := setInterfaceLinkDown(req.Name); err != nil {
+		return nil, err
 	}
 
 	return new(empty.Empty), nil
 }
 
+func setInterfaceLinkDown(name string) error {
+	iface := &netlink.Device{netlink.LinkAttrs{Name: name}}
+
+	if err := netlink.LinkSetDown(iface); err != nil {
+		return os.NewSyscallError("rtnetlink", err)
+	}
+
+	return nil
+}
+
 func (s *AgentServiceServer) AddIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.Empty, error) {
-	if err := updateAddrList("add", req); err != nil {
+	if err := updateAddrList("add", req.LinkName, req.Addr); err != nil {
 		return nil, err
 	}
 
@@ -163,20 +191,20 @@ func (s *AgentServiceServer) AddIPAddr(ctx context.Context, req *pb.IPAddrReques
 }
 
 func (s *AgentServiceServer) DelIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.Empty, error) {
-	if err := updateAddrList("del", req); err != nil {
+	if err := updateAddrList("del", req.LinkName, req.Addr); err != nil {
 		return nil, err
 	}
 
 	return new(empty.Empty), nil
 }
 
-func updateAddrList(action string, req *pb.IPAddrRequest) error {
-	iface, err := netlink.LinkByName(req.LinkName)
+func updateAddrList(action string, ifname, ipaddr string) error {
+	iface, err := netlink.LinkByName(ifname)
 	if err != nil {
 		return os.NewSyscallError("rtnetlink", err)
 	}
 
-	addr, err := netlink.ParseAddr(req.Addr)
+	addr, err := netlink.ParseAddr(ipaddr)
 	if err != nil {
 		return err
 	}
@@ -195,4 +223,16 @@ func updateAddrList(action string, req *pb.IPAddrRequest) error {
 	}
 
 	return nil
+}
+
+func ParseCIDR(s string) (net.IP, *net.IPNet, error) {
+	if !strings.Contains(s, "/") {
+		if net.ParseIP(s).To4() != nil {
+			s += "/32"
+		} else {
+			s += "/128"
+		}
+	}
+
+	return net.ParseCIDR(s)
 }
