@@ -191,8 +191,20 @@ func getBlkdevStat() ([]*pb.GuestInfo_BlockDevice, error) {
 			if len(fields) < 2 {
 				continue
 			}
-			if _, ok := mm[fields[0]]; !ok {
-				mm[fields[0]] = fields[1]
+
+			var realname string
+
+			switch s, err := filepath.EvalSymlinks(fields[0]); {
+			case err == nil:
+				realname = s
+			case os.IsNotExist(err):
+				realname = fields[0]
+			default:
+				return nil, err
+			}
+
+			if _, ok := mm[realname]; !ok {
+				mm[realname] = fields[1]
 			}
 		}
 		if err = scanner.Err(); err != nil {
