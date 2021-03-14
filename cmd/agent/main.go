@@ -91,6 +91,11 @@ func main() {
 		},
 	}
 
+	// Try to load vsock module
+	if err := LoadVSockModule(); err != nil {
+		log.Warnf("Non-fatal error: %s", err)
+	}
+
 	if err := app.Run(os.Args); err != nil {
 		log.Fatalln(err)
 	}
