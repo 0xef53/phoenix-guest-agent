@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const VERSION = "1.0.1"
+const VERSION = "1.0.2"
 const DEFAULT_SERIAL_PORT = "/dev/virtio-ports/org.guest-agent.0"
 
 func main() {
