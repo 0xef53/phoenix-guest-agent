@@ -2,14 +2,11 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
-
-	empty "github.com/golang/protobuf/ptypes/empty"
-	log "github.com/sirupsen/logrus"
 )
 
 // from linux/fs.h
@@ -91,76 +88,71 @@ func ioctl(fd uintptr, request, argp uintptr) (err error) {
 	return os.NewSyscallError("ioctl", err)
 }
 
-func (s *AgentServiceServer) FreezeFileSystems(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
-	mm, err := getMountPoints()
+func getOSUsers() (map[string]uint32, map[uint32]string, error) {
+	f, err := os.Open("/etc/passwd")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	defer f.Close()
 
-	s.lock()
+	names := make(map[string]uint32)
+	uids := make(map[uint32]string)
 
-	freeze := func(s string) error {
-		fs, err := os.Open(s)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		// alice:x:1005:1006::/home/alice:/usr/bin/bash
+		parts := strings.SplitN(scanner.Text(), ":", 7)
+		if len(parts) < 6 || parts[0] == "" || parts[0][0] == '+' || parts[0][0] == '-' {
+			continue
+		}
+		uid, err := strconv.Atoi(parts[2])
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		defer fs.Close()
-
-		if err := ioctl(fs.Fd(), FIFREEZE, 0); err != nil {
-			errno := err.(*os.SyscallError).Err.(syscall.Errno)
-			if errno != syscall.EOPNOTSUPP && errno != syscall.EBUSY {
-				return err
-			}
-		}
-
-		return nil
+		names[parts[0]] = uint32(uid)
+		uids[uint32(uid)] = parts[0]
 	}
 
-	for _, m := range mm {
-		log.Debugf("Freezing: %s", m)
-		if err := freeze(m.FSFile); err != nil {
-			return nil, err
-		}
+	if err := scanner.Err(); err != nil {
+		return nil, nil, err
 	}
 
-	log.Debug("All filesystems are frozen now")
-
-	return new(empty.Empty), nil
+	return names, uids, nil
 }
 
-func (s *AgentServiceServer) UnfreezeFileSystems(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
-	mm, err := getMountPoints()
+func getOSGroups() (map[string]uint32, map[uint32]string, error) {
+	f, err := os.Open("/etc/group")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	defer f.Close()
 
-	unfreeze := func(s string) error {
-		fs, err := os.Open(s)
+	names := make(map[string]uint32)
+	gids := make(map[uint32]string)
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		// wheel:*:0:root
+		parts := strings.SplitN(scanner.Text(), ":", 4)
+		if len(parts) < 4 || parts[0] == "" || parts[0][0] == '+' || parts[0][0] == '-' {
+			// If the file contains +foo and you search for "foo", glibc
+			// returns an "invalid argument" error. Similarly, if you search
+			// for a gid for a row where the group name starts with "+" or "-",
+			// glibc fails to find the record.
+			continue
+		}
+
+		gid, err := strconv.Atoi(parts[2])
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		defer fs.Close()
-
-		if err := ioctl(fs.Fd(), FITHAW, 0); err != nil {
-			errno := err.(*os.SyscallError).Err.(syscall.Errno)
-			if errno != syscall.EINVAL {
-				return err
-			}
-		}
-
-		return nil
+		names[parts[0]] = uint32(gid)
+		gids[uint32(gid)] = parts[0]
 	}
 
-	for _, m := range mm {
-		log.Debugf("Unfreezing: %s", m)
-		if err := unfreeze(m.FSFile); err != nil {
-			return nil, err
-		}
+	if err := scanner.Err(); err != nil {
+		return nil, nil, err
 	}
 
-	s.unlock()
-
-	log.Debug("All filesystems are thawed now")
-
-	return new(empty.Empty), nil
+	return names, gids, nil
 }

@@ -1,6 +1,6 @@
 module github.com/0xef53/phoenix-guest-agent
 
-go 1.14
+go 1.16
 
 require (
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e

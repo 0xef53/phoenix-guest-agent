@@ -41,7 +41,11 @@ func (s *AgentServiceServer) IsLocked() bool {
 }
 
 func (s *AgentServiceServer) GetAgentInfo(ctx context.Context, req *empty.Empty) (*pb.AgentInfo, error) {
-	return &pb.AgentInfo{Version: VERSION, IsLocked: s.locked}, nil
+	return &pb.AgentInfo{Version: AgentVersion, IsLocked: s.locked}, nil
+}
+
+func (s *AgentServiceServer) GetGuestInfo(ctx context.Context, req *empty.Empty) (*pb.GuestInfo, error) {
+	return s.stat(), nil
 }
 
 func (s *AgentServiceServer) ShutdownAgent(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {

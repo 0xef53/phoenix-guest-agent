@@ -18,3 +18,12 @@ func (c *Command) ShowAgentInfo() error {
 
 	return printJSON(resp)
 }
+
+func (c *Command) ShowGuestInfo() error {
+	resp, err := c.client.GetGuestInfo(c.ctx, new(empty.Empty))
+	if err != nil {
+		return err
+	}
+
+	return printJSON(resp)
+}

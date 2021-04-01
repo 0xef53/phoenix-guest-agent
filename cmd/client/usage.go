@@ -88,7 +88,7 @@ func usage() {
 }
 
 func printSectionUsage(prefix string) {
-	s := fmt.Sprintf("Usage:\n  %s [options] VMNAME command [args]\n\n", filepath.Base(os.Args[0]))
+	s := fmt.Sprintf("Usage:\n  %s [options] ENDPOINT command [args]\n\n", filepath.Base(os.Args[0]))
 	s += "Commands:\n"
 
 	var c [][]string

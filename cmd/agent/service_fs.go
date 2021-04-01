@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -11,14 +10,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 
 	pb "github.com/0xef53/phoenix-guest-agent/protobufs/agent"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	grpc_codes "google.golang.org/grpc/codes"
+	grpc_status "google.golang.org/grpc/status"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (s *AgentServiceServer) GetFileMD5Hash(ctx context.Context, req *pb.FileRequest) (*pb.FileMD5Hash, error) {
@@ -94,75 +94,6 @@ func (s *AgentServiceServer) GetFileStat(ctx context.Context, req *pb.FileStatRe
 	return &pb.FileStatList{Files: files}, nil
 }
 
-func getOSUsers() (map[string]uint32, map[uint32]string, error) {
-	f, err := os.Open("/etc/passwd")
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-
-	names := make(map[string]uint32)
-	uids := make(map[uint32]string)
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		// alice:x:1005:1006::/home/alice:/usr/bin/bash
-		parts := strings.SplitN(scanner.Text(), ":", 7)
-		if len(parts) < 6 || parts[0] == "" || parts[0][0] == '+' || parts[0][0] == '-' {
-			continue
-		}
-		uid, err := strconv.Atoi(parts[2])
-		if err != nil {
-			return nil, nil, err
-		}
-		names[parts[0]] = uint32(uid)
-		uids[uint32(uid)] = parts[0]
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, nil, err
-	}
-
-	return names, uids, nil
-}
-
-func getOSGroups() (map[string]uint32, map[uint32]string, error) {
-	f, err := os.Open("/etc/group")
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-
-	names := make(map[string]uint32)
-	gids := make(map[uint32]string)
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		// wheel:*:0:root
-		parts := strings.SplitN(scanner.Text(), ":", 4)
-		if len(parts) < 4 || parts[0] == "" || parts[0][0] == '+' || parts[0][0] == '-' {
-			// If the file contains +foo and you search for "foo", glibc
-			// returns an "invalid argument" error. Similarly, if you search
-			// for a gid for a row where the group name starts with "+" or "-",
-			// glibc fails to find the record.
-			continue
-		}
-
-		gid, err := strconv.Atoi(parts[2])
-		if err != nil {
-			return nil, nil, err
-		}
-		names[parts[0]] = uint32(gid)
-		gids[uint32(gid)] = parts[0]
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, nil, err
-	}
-
-	return names, gids, nil
-}
-
 func (s *AgentServiceServer) SetFileOwner(ctx context.Context, req *pb.FileRequest) (*empty.Empty, error) {
 	users, _, err := getOSUsers()
 	if err != nil {
@@ -228,7 +159,7 @@ func (s *AgentServiceServer) CreateDir(ctx context.Context, req *pb.FileRequest)
 func (s *AgentServiceServer) UploadFile(stream pb.AgentService_UploadFileServer) error {
 	req, err := stream.Recv()
 	if err != nil {
-		return status.Errorf(codes.Internal, "cannot create a new stream: %s", err)
+		return grpc_status.Errorf(grpc_codes.Internal, "cannot create a new stream: %s", err)
 	}
 
 	var fullname string
@@ -238,12 +169,12 @@ func (s *AgentServiceServer) UploadFile(stream pb.AgentService_UploadFileServer)
 	}
 
 	if len(fullname) == 0 {
-		return status.Errorf(codes.InvalidArgument, "file name is undefined")
+		return grpc_status.Errorf(grpc_codes.InvalidArgument, "file name is undefined")
 	}
 
 	tmpfile, err := ioutil.TempFile(filepath.Dir(fullname), "."+filepath.Base(fullname)+".*")
 	if err != nil {
-		return status.Errorf(codes.Internal, err.Error())
+		return grpc_status.Errorf(grpc_codes.Internal, err.Error())
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -253,9 +184,9 @@ func (s *AgentServiceServer) UploadFile(stream pb.AgentService_UploadFileServer)
 	for {
 		switch stream.Context().Err() {
 		case context.Canceled:
-			return status.Error(codes.Canceled, "request is canceled")
+			return grpc_status.Error(grpc_codes.Canceled, "request is canceled")
 		case context.DeadlineExceeded:
-			return status.Error(codes.DeadlineExceeded, "deadline is exceeded")
+			return grpc_status.Error(grpc_codes.DeadlineExceeded, "deadline is exceeded")
 		}
 
 		req, err := stream.Recv()
@@ -264,30 +195,30 @@ func (s *AgentServiceServer) UploadFile(stream pb.AgentService_UploadFileServer)
 				// no more data
 				break
 			}
-			return status.Errorf(codes.Internal, "chunk recv failed: %s", err)
+			return grpc_status.Errorf(grpc_codes.Internal, "chunk recv failed: %s", err)
 		}
 
 		chunk := req.GetChunkData()
 		if chunk == nil {
-			return status.Errorf(codes.Internal, "unexpected: chunk is nil")
+			return grpc_status.Errorf(grpc_codes.Internal, "unexpected: chunk is nil")
 		}
 
 		fileSize += uint64(len(chunk))
 
 		if fileSize > 1<<31 { // 2Gb
-			return status.Errorf(codes.InvalidArgument, "file is too large: %d > %d", fileSize, 1<<31)
+			return grpc_status.Errorf(grpc_codes.InvalidArgument, "file is too large: %d > %d", fileSize, 1<<31)
 		}
 
 		if _, err := tmpfile.Write(chunk); err != nil {
-			return status.Errorf(codes.Internal, "chunk write failed: %s", err)
+			return grpc_status.Errorf(grpc_codes.Internal, "chunk write failed: %s", err)
 		}
 	}
 
 	if err := tmpfile.Sync(); err != nil {
-		return status.Errorf(codes.Internal, "file sync failed: %s", err)
+		return grpc_status.Errorf(grpc_codes.Internal, "file sync failed: %s", err)
 	}
 	if err := os.Rename(tmpfile.Name(), fullname); err != nil {
-		return status.Errorf(codes.Internal, "rename temp file failed: %s", err)
+		return grpc_status.Errorf(grpc_codes.Internal, "rename temp file failed: %s", err)
 	}
 
 	return stream.SendAndClose(new(empty.Empty))
@@ -314,9 +245,85 @@ func (s *AgentServiceServer) DownloadFile(req *pb.FileRequest, stream pb.AgentSe
 			ChunkData: buffer[:n],
 		}
 		if err := stream.Send(resp); err != nil {
-			return status.Errorf(codes.Internal, "chunk send failed: %s", err)
+			return grpc_status.Errorf(grpc_codes.Internal, "chunk send failed: %s", err)
 		}
 	}
 
 	return nil
+}
+
+func (s *AgentServiceServer) FreezeFileSystems(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+	mm, err := getMountPoints()
+	if err != nil {
+		return nil, err
+	}
+
+	s.lock()
+
+	freeze := func(s string) error {
+		fs, err := os.Open(s)
+		if err != nil {
+			return err
+		}
+		defer fs.Close()
+
+		if err := ioctl(fs.Fd(), FIFREEZE, 0); err != nil {
+			errno := err.(*os.SyscallError).Err.(syscall.Errno)
+			if errno != syscall.EOPNOTSUPP && errno != syscall.EBUSY {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	for _, m := range mm {
+		log.Debugf("Freezing: %s", m)
+
+		if err := freeze(m.FSFile); err != nil {
+			return nil, err
+		}
+	}
+
+	log.Debug("All filesystems are frozen now")
+
+	return new(empty.Empty), nil
+}
+
+func (s *AgentServiceServer) UnfreezeFileSystems(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+	mm, err := getMountPoints()
+	if err != nil {
+		return nil, err
+	}
+
+	unfreeze := func(s string) error {
+		fs, err := os.Open(s)
+		if err != nil {
+			return err
+		}
+		defer fs.Close()
+
+		if err := ioctl(fs.Fd(), FITHAW, 0); err != nil {
+			errno := err.(*os.SyscallError).Err.(syscall.Errno)
+			if errno != syscall.EINVAL {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	for _, m := range mm {
+		log.Debugf("Unfreezing: %s", m)
+
+		if err := unfreeze(m.FSFile); err != nil {
+			return nil, err
+		}
+	}
+
+	s.unlock()
+
+	log.Debug("All filesystems are thawed now")
+
+	return new(empty.Empty), nil
 }
