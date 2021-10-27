@@ -35,6 +35,16 @@ type Agent struct {
 }
 
 func (a Agent) ListenAndServe(ctx context.Context) error {
+	// The cancel function is needed to be able
+	// to shutdown the agent from the GRPC request
+	ctx, cancel := context.WithCancel(ctx)
+
+	group, ctx := errgroup.WithContext(ctx)
+
+	//
+	// Init GRPC
+	//
+
 	grpcSrv := grpc.NewServer(
 		grpc_middleware.WithUnaryServerChain(
 			grpc_ctxtags.UnaryServerInterceptor(grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.TagBasedRequestFieldExtractor("log"))),
@@ -48,54 +58,8 @@ func (a Agent) ListenAndServe(ctx context.Context) error {
 
 	poller := StatPoller{}
 
-	// The cancel function is needed here to be able
-	// to shutdown the agent from the GRPC request
-	ctx, cancel := context.WithCancel(ctx)
-
 	// Register main GRPC handler
 	pb.RegisterAgentServiceServer(grpcSrv, &AgentServiceServer{stat: poller.Stat, cancel: cancel})
-
-	//
-	// Listeners
-	//
-
-	var listeners []net.Listener
-
-	if _, err := os.Stat("/dev/vsock"); os.IsNotExist(err) || a.legacyMode {
-		log.Debug("Using legacy mode via virtio serial port")
-
-		if l, err := devconn.ListenDevice(a.serialPort); err == nil {
-			listeners = append(listeners, l)
-		} else {
-			return err
-		}
-
-		if !a.withoutTCP {
-			if ll, err := a.linkLocalListeners(); err == nil {
-				listeners = append(listeners, ll...)
-			} else {
-				log.Debugf("Non-fatal error: unable to use IPv6 link-local addresses: %s", err)
-			}
-		}
-	} else {
-		log.Debug("Using Linux VM sockets (AF_VSOCK) as a transport")
-
-		if l, err := vsock.Listen(8383); err == nil {
-			listeners = append(listeners, l)
-		} else {
-			return err
-		}
-	}
-
-	//
-	// Run servers
-	//
-
-	group, ctx := errgroup.WithContext(ctx)
-
-	group.Go(func() error {
-		return poller.Run(ctx, 30*time.Second)
-	})
 
 	idleConnsClosed := make(chan struct{})
 
@@ -106,7 +70,98 @@ func (a Agent) ListenAndServe(ctx context.Context) error {
 		close(idleConnsClosed)
 	}()
 
-	for _, l := range listeners {
+	//
+	// Stat poller
+	//
+
+	group.Go(func() error {
+		return poller.Run(ctx, 30*time.Second)
+	})
+
+	//
+	// Listeners
+	//
+
+	listeners := make(chan net.Listener)
+
+	go func() {
+		defer close(listeners)
+
+		// A main virtio listener
+		vl, err := func() (net.Listener, error) {
+			if _, err := os.Stat("/dev/vsock"); os.IsNotExist(err) || a.legacyMode {
+				log.Debug("Using legacy mode via virtio serial port")
+				return devconn.ListenDevice(a.serialPort)
+			}
+			log.Debug("Using Linux VM sockets (AF_VSOCK) as a transport")
+			return vsock.Listen(8383)
+		}()
+		if err != nil {
+			log.Errorf(err.Error())
+			return
+		}
+
+		listeners <- vl
+
+		if _, ok := vl.(*vsock.Listener); ok || a.withoutTCP {
+			return
+		}
+
+		// Additional TCP listeners in case the main transport is virtio sirial port
+		processed := make(map[string]struct{})
+
+		tlsConfig, err := cert.NewServerConfig(a.crtStore)
+		if err != nil {
+			log.Debugf("Non-fatal error: unable to use TCP transport: %s", err)
+			return
+		}
+
+		var attempt int
+
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			addrs, err := a.getLinkLocalAddrs()
+			if err != nil {
+				log.Debugf("Non-fatal error: could not get the list of link-local IP adressess: %s", err)
+				break
+			}
+
+			for _, addr := range addrs {
+				if _, ok := processed[addr]; !ok {
+					processed[addr] = struct{}{}
+
+					if tl, err := tls.Listen("tcp", net.JoinHostPort(addr, "8383"), tlsConfig); err == nil {
+						listeners <- tl
+					} else {
+						log.Debugf("Non-fatal error: could not bind to %s: %s", addr, err)
+					}
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+
+			// We wait for link-local addresses on network interfaces
+			// within about 20*3 seconds
+			if attempt == 20 {
+				break
+			}
+			attempt++
+		}
+	}()
+
+	//
+	// Run servers
+	//
+
+	var srvnum int
+
+	for l := range listeners {
 		listener := l
 		laddr := listener.Addr().String()
 
@@ -122,6 +177,13 @@ func (a Agent) ListenAndServe(ctx context.Context) error {
 
 			return nil
 		})
+
+		srvnum++
+	}
+
+	if srvnum == 0 {
+		log.Debug("No one server has been launched. Exit")
+		cancel()
 	}
 
 	<-idleConnsClosed
@@ -129,40 +191,31 @@ func (a Agent) ListenAndServe(ctx context.Context) error {
 	return group.Wait()
 }
 
-func (a *Agent) linkLocalListeners() ([]net.Listener, error) {
-	tlsConfig, err := cert.NewServerConfig(a.crtStore)
-	if err != nil {
-		return nil, err
-	}
+func (a *Agent) getLinkLocalAddrs() ([]string, error) {
+	var lladdrs []string
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
 
-	var listeners []net.Listener
-
 	for _, netif := range ifaces {
-		addrs, err := netif.Addrs()
+		ifaddrs, err := netif.Addrs()
 		if err != nil {
 			return nil, err
 		}
 
-		for _, addr := range addrs {
+		for _, addr := range ifaddrs {
 			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() == nil {
 				if ipnet.IP.IsLinkLocalUnicast() {
-					l, err := tls.Listen("tcp", "["+ipnet.IP.String()+"%"+netif.Name+"]:8383", tlsConfig)
-					if err != nil {
-						return nil, err
-					}
-					listeners = append(listeners, l)
+					lladdrs = append(lladdrs, ipnet.IP.String()+"%"+netif.Name)
 					break
 				}
 			}
 		}
 	}
 
-	return listeners, nil
+	return lladdrs, nil
 }
 
 func unaryLogRequestInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
