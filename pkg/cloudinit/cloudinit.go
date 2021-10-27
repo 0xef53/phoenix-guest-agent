@@ -92,7 +92,14 @@ func ReadData() (*Data, error) {
 }
 
 func GetDeviceAttr(device, attr string) (string, error) {
-	out, err := exec.Command("blkid", "-ovalue", "-t", "TYPE=iso9660", "-s", strings.ToUpper(attr), device).CombinedOutput()
+	// Check device availability
+	if fd, err := os.Open(device); err == nil {
+		fd.Close()
+	} else {
+		return "", err
+	}
+
+	out, err := exec.Command("blkid", "-c", "/dev/null", "-ovalue", "-t", "TYPE=iso9660", "-s", strings.ToUpper(attr), device).CombinedOutput()
 	if err != nil {
 		var exitCode int
 		if exiterr, ok := err.(*exec.ExitError); ok {
