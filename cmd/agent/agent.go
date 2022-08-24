@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const AgentVersion = "1.0.3"
+const AgentVersion = "1.0.4"
 const DefaultSerialPort = "/dev/virtio-ports/org.guest-agent.0"
 
 type Agent struct {
@@ -130,10 +130,9 @@ func (a Agent) ListenAndServe(ctx context.Context) error {
 
 			for _, addr := range addrs {
 				if _, ok := processed[addr]; !ok {
-					processed[addr] = struct{}{}
-
 					if tl, err := tls.Listen("tcp", net.JoinHostPort(addr, "8383"), tlsConfig); err == nil {
 						listeners <- tl
+						processed[addr] = struct{}{}
 					} else {
 						log.Debugf("Non-fatal error: could not bind to %s: %s", addr, err)
 					}
