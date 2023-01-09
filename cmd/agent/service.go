@@ -8,6 +8,8 @@ import (
 	pb "github.com/0xef53/phoenix-guest-agent/protobufs/agent"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
+	grpc_codes "google.golang.org/grpc/codes"
+	grpc_status "google.golang.org/grpc/status"
 )
 
 type AgentServiceServer struct {
@@ -45,7 +47,13 @@ func (s *AgentServiceServer) GetAgentInfo(ctx context.Context, req *empty.Empty)
 }
 
 func (s *AgentServiceServer) GetGuestInfo(ctx context.Context, req *empty.Empty) (*pb.GuestInfo, error) {
-	return s.stat(), nil
+	st := s.stat()
+
+	if st == nil || st.Uptime == 0 {
+		return nil, grpc_status.Errorf(grpc_codes.NotFound, "not ready yet")
+	}
+
+	return st, nil
 }
 
 func (s *AgentServiceServer) ShutdownAgent(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {

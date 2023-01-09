@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const AgentVersion = "1.0.4"
+const AgentVersion = "1.0.5"
 const DefaultSerialPort = "/dev/virtio-ports/org.guest-agent.0"
 
 type Agent struct {
