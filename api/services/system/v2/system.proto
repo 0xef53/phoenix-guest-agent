@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package pga.api.services.system.v2;
+
+import "google/protobuf/empty.proto";
+import "types/v2/agent.proto";
+
+option go_package = "github.com/0xef53/phoenix-guest-agent/api/services/system/v2;system";
+
+service AgentSystemService {
+    rpc GetInfo(google.protobuf.Empty) returns (GetInfoResponse) { }
+    rpc ShutdownAgent(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+}
+
+message GetInfoResponse {
+    types.v2.AgentInfo info = 1;
+}

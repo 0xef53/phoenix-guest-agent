@@ -1,0 +1,49 @@
+package agent
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/0xef53/phoenix-guest-agent/services"
+
+	pb "github.com/0xef53/phoenix-guest-agent/api/services/agent/v2"
+
+	grpcserver "github.com/0xef53/go-grpc/server"
+
+	empty "github.com/golang/protobuf/ptypes/empty"
+	grpc_runtime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	grpc "google.golang.org/grpc"
+)
+
+var _ = pb.AgentServiceServer(new(service))
+
+func init() {
+	grpcserver.Register(new(service), grpcserver.WithServiceBucket("pga"))
+}
+
+type service struct {
+	*services.ServiceServer
+}
+
+func (s *service) Init(inner *services.ServiceServer) {
+	s.ServiceServer = inner
+}
+
+func (s *service) Name() string {
+	return fmt.Sprintf("%T", s)
+}
+
+func (s *service) RegisterGRPC(server *grpc.Server) {
+	pb.RegisterAgentServiceServer(server, s)
+}
+
+func (s *service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
+
+func (s *service) GetInfo(ctx context.Context, _ *empty.Empty) (*pb.GetInfoResponse, error) {
+	info, err := s.ServiceServer.GetGuestInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetInfoResponse{Info: guestInfoToProto(info)}, nil
+}
