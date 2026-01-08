@@ -15,6 +15,8 @@ import (
 	"github.com/0xef53/phoenix-guest-agent/services/interceptors"
 
 	_ "github.com/0xef53/phoenix-guest-agent/services/agent"
+	_ "github.com/0xef53/phoenix-guest-agent/services/filesystem"
+	_ "github.com/0xef53/phoenix-guest-agent/services/network"
 	_ "github.com/0xef53/phoenix-guest-agent/services/system"
 
 	grpcserver "github.com/0xef53/go-grpc/server"
@@ -68,6 +70,12 @@ func (a *Agent) ListenAndServe(ctx context.Context) error {
 		}
 	} else {
 		return fmt.Errorf("pre-start error: %w", err)
+	}
+
+	for _, svc := range grpcserver.Services("pga") {
+		log.Info("Registering service: ", svc.Name())
+
+		svc.RegisterGRPC(grpcSrv)
 	}
 
 	idleConnsClosed := make(chan struct{})

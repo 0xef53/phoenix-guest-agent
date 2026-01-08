@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/0xef53/phoenix-guest-agent/internal/utmp"
+
+	systemd_login1 "github.com/coreos/go-systemd/v22/login1"
 )
 
 type StatPoller struct {
@@ -256,35 +258,106 @@ func (p *StatPoller) getBlockdevStat() ([]*GuestInfo_BlockDevice, error) {
 }
 
 func (p *StatPoller) getLoggedUsers() ([]*GuestInfo_LoggedUser, error) {
-	entries, err := utmp.ReadFile("/var/run/utmp")
-	if err != nil {
-		if os.IsNotExist(err) {
-			/*
-				TODO:
-					Нужно написать альтернативную функцию через systemd
-			*/
-			return nil, nil
+	// New method, but for now, we only use it
+	// if the file "/var/run/utmp" option doesn't work
+	viaSystemd := func() ([]*GuestInfo_LoggedUser, error) {
+		ctx := context.Background()
+
+		conn, err := systemd_login1.New()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		sessions, err := conn.ListSessionsContext(ctx)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, err
+		users := make([]*GuestInfo_LoggedUser, 0, len(sessions))
+
+		for _, session := range sessions {
+			u := GuestInfo_LoggedUser{
+				Name: session.User,
+			}
+
+			props, err := conn.GetSessionPropertiesContext(ctx, session.Path)
+			if err != nil {
+				return nil, err
+			}
+
+			if x, ok := props["TTY"]; ok {
+				u.Device = strings.Trim(x.String(), "\"")
+			}
+
+			if len(u.Device) == 0 {
+				var service, scope string
+
+				if x, ok := props["Service"]; ok {
+					service = strings.Trim(x.String(), "\"")
+				}
+
+				if x, ok := props["Scope"]; ok {
+					scope = strings.Trim(x.String(), "\"")
+				}
+
+				u.Device = fmt.Sprintf("%s:%s", service, scope)
+			}
+
+			if x, ok := props["RemoteHost"]; ok {
+				u.Host = strings.Trim(x.String(), "\"")
+			}
+
+			if x, ok := props["Timestamp"]; ok {
+				if tsMicro, ok := x.Value().(uint64); ok {
+					sec := int64(tsMicro / 1_000_000)
+					nsec := int64((tsMicro % 1_000_000) * 1000)
+
+					u.LoginTime = time.Unix(sec, nsec).Unix()
+				}
+			}
+
+			if u.Name != "" && u.Host != "" && u.Device != "hvc0" {
+				users = append(users, &u)
+			}
+		}
+
+		return users, nil
 	}
 
-	users := make([]*GuestInfo_LoggedUser, 0, 5)
-
-	for _, entry := range entries {
-		if entry.Type != utmp.UserProcess {
-			continue
+	// A legacy method, but we'll try it first
+	viaUtmpFile := func() ([]*GuestInfo_LoggedUser, error) {
+		entries, err := utmp.ReadFile("/var/run/utmp")
+		if err != nil {
+			return nil, err
 		}
 
-		u := GuestInfo_LoggedUser{
-			Name:      string(bytes.Trim(entry.User[:], "\u0000")),
-			Device:    string(bytes.Trim(entry.Device[:], "\u0000")),
-			Host:      string(bytes.Trim(entry.Host[:], "\u0000")),
-			LoginTime: time.Unix(int64(entry.Time.Sec), int64(entry.Time.Usec)).Unix(),
+		users := make([]*GuestInfo_LoggedUser, 0, len(entries))
+
+		for _, entry := range entries {
+			if entry.Type != utmp.UserProcess {
+				continue
+			}
+
+			u := GuestInfo_LoggedUser{
+				Name:      string(bytes.Trim(entry.User[:], "\u0000")),
+				Device:    string(bytes.Trim(entry.Device[:], "\u0000")),
+				Host:      string(bytes.Trim(entry.Host[:], "\u0000")),
+				LoginTime: time.Unix(int64(entry.Time.Sec), int64(entry.Time.Usec)).Unix(),
+			}
+
+			if u.Name != "" && u.Host != "" && u.Device != "hvc0" {
+				users = append(users, &u)
+			}
 		}
 
-		if u.Name != "" && u.Host != "" {
-			users = append(users, &u)
+		return users, nil
+	}
+
+	users, err := viaUtmpFile()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return viaSystemd()
 		}
 	}
 

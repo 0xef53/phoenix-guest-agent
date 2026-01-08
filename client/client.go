@@ -18,10 +18,12 @@ type client struct {
 }
 
 func NewClient(endpoint string, crtStore cert.Store) (*client, error) {
-	tlsConfig, err := cert.NewServerConfig(crtStore)
+	tlsConfig, err := cert.NewClientConfig(crtStore)
 	if err != nil {
 		return nil, err
 	}
+
+	tlsConfig.InsecureSkipVerify = true
 
 	return &client{
 		endpoint:  endpoint,

@@ -15,36 +15,36 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-var _ = pb.AgentSystemServiceServer(new(service))
+var _ = pb.AgentSystemServiceServer(new(Service))
 
 func init() {
-	grpcserver.Register(new(service), grpcserver.WithServiceBucket("pga"))
+	grpcserver.Register(new(Service), grpcserver.WithServiceBucket("pga"))
 }
 
-type service struct {
+type Service struct {
 	*services.ServiceServer
 }
 
-func (s *service) Init(inner *services.ServiceServer) {
+func (s *Service) Init(inner *services.ServiceServer) {
 	s.ServiceServer = inner
 }
 
-func (s *service) Name() string {
+func (s *Service) Name() string {
 	return fmt.Sprintf("%T", s)
 }
 
-func (s *service) RegisterGRPC(server *grpc.Server) {
+func (s *Service) RegisterGRPC(server *grpc.Server) {
 	pb.RegisterAgentSystemServiceServer(server, s)
 }
 
-func (s *service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
+func (s *Service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
 
-func (s *service) GetInfo(ctx context.Context, _ *empty.Empty) (*pb.GetInfoResponse, error) {
+func (s *Service) GetInfo(ctx context.Context, _ *empty.Empty) (*pb.GetInfoResponse, error) {
 	return &pb.GetInfoResponse{
 		Info: agentInfoToProto(s.ServiceServer.GetAgentInfo(ctx)),
 	}, nil
 }
 
-func (s *service) ShutdownAgent(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
+func (s *Service) ShutdownAgent(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
 	return new(empty.Empty), nil
 }

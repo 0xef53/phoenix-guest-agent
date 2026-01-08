@@ -6,7 +6,9 @@ require github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e
 
 require (
 	github.com/0xef53/go-grpc v0.0.0-20250804122917-f0d76f635ad5 // indirect
+	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect

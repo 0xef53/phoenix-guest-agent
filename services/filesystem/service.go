@@ -21,31 +21,31 @@ import (
 	empty "github.com/golang/protobuf/ptypes/empty"
 )
 
-var _ = pb.AgentFileSystemServiceServer(new(service))
+var _ = pb.AgentFileSystemServiceServer(new(Service))
 
 func init() {
-	grpcserver.Register(new(service), grpcserver.WithServiceBucket("pga"))
+	grpcserver.Register(new(Service), grpcserver.WithServiceBucket("pga"))
 }
 
-type service struct {
+type Service struct {
 	*services.ServiceServer
 }
 
-func (s *service) Init(inner *services.ServiceServer) {
+func (s *Service) Init(inner *services.ServiceServer) {
 	s.ServiceServer = inner
 }
 
-func (s *service) Name() string {
+func (s *Service) Name() string {
 	return fmt.Sprintf("%T", s)
 }
 
-func (s *service) RegisterGRPC(server *grpc.Server) {
+func (s *Service) RegisterGRPC(server *grpc.Server) {
 	pb.RegisterAgentFileSystemServiceServer(server, s)
 }
 
-func (s *service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
+func (s *Service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
 
-func (s *service) Freeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
+func (s *Service) Freeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
 	err := s.ServiceServer.FreezeFileSystems(ctx)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (s *service) Freeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, err
 	return new(empty.Empty), nil
 }
 
-func (s *service) Unfreeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
+func (s *Service) Unfreeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
 	err := s.ServiceServer.UnfreezeFileSystems(ctx)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (s *service) Unfreeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, e
 	return new(empty.Empty), nil
 }
 
-func (s *service) GetFileMD5Hash(ctx context.Context, req *pb.GetFileMD5HashRequest) (*pb.GetFileMD5HashResponse, error) {
+func (s *Service) GetFileMD5Hash(ctx context.Context, req *pb.GetFileMD5HashRequest) (*pb.GetFileMD5HashResponse, error) {
 	hash, err := s.ServiceServer.GetFileMD5Hash(ctx, req.Path)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (s *service) GetFileMD5Hash(ctx context.Context, req *pb.GetFileMD5HashRequ
 	return &pb.GetFileMD5HashResponse{Hash: hash}, nil
 }
 
-func (s *service) GetFileStat(ctx context.Context, req *pb.GetFileStatRequest) (*pb.GetFileStatResponse, error) {
+func (s *Service) GetFileStat(ctx context.Context, req *pb.GetFileStatRequest) (*pb.GetFileStatResponse, error) {
 	fstats, err := s.ServiceServer.GetFileStat(ctx, req.Path, req.WithDirContent)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (s *service) GetFileStat(ctx context.Context, req *pb.GetFileStatRequest) (
 	return &pb.GetFileStatResponse{Files: fileStatsToProto(fstats)}, nil
 }
 
-func (s *service) SetFileOwner(ctx context.Context, req *pb.SetFileOwnerRequest) (*empty.Empty, error) {
+func (s *Service) SetFileOwner(ctx context.Context, req *pb.SetFileOwnerRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.SetFileOwner(ctx, req.Path, req.Owner, req.Group)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (s *service) SetFileOwner(ctx context.Context, req *pb.SetFileOwnerRequest)
 	return new(empty.Empty), nil
 }
 
-func (s *service) SetFileMode(ctx context.Context, req *pb.SetFileModeRequest) (*empty.Empty, error) {
+func (s *Service) SetFileMode(ctx context.Context, req *pb.SetFileModeRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.SetFileMode(ctx, req.Path, os.FileMode(req.Mode))
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (s *service) SetFileMode(ctx context.Context, req *pb.SetFileModeRequest) (
 	return new(empty.Empty), nil
 }
 
-func (s *service) CreateDir(ctx context.Context, req *pb.CreateDirRequest) (*empty.Empty, error) {
+func (s *Service) CreateDir(ctx context.Context, req *pb.CreateDirRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.CreateDir(ctx, req.Path, os.FileMode(req.Mode))
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (s *service) CreateDir(ctx context.Context, req *pb.CreateDirRequest) (*emp
 	return new(empty.Empty), nil
 }
 
-func (s *service) UploadFile(stream pb.AgentFileSystemService_UploadFileServer) error {
+func (s *Service) UploadFile(stream pb.AgentFileSystemService_UploadFileServer) error {
 	req, err := stream.Recv()
 	if err != nil {
 		return grpc_status.Errorf(grpc_codes.Internal, "cannot create a new stream: %s", err)
@@ -178,7 +178,7 @@ func (s *service) UploadFile(stream pb.AgentFileSystemService_UploadFileServer) 
 	return stream.SendAndClose(new(empty.Empty))
 }
 
-func (s *service) DownloadFile(req *pb.DownloadFileRequest, stream pb.AgentFileSystemService_DownloadFileServer) error {
+func (s *Service) DownloadFile(req *pb.DownloadFileRequest, stream pb.AgentFileSystemService_DownloadFileServer) error {
 	file, err := os.Open(req.Path)
 	if err != nil {
 		return err

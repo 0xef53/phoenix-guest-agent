@@ -18,31 +18,31 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-var _ = pb.AgentNetworkServiceServer(new(service))
+var _ = pb.AgentNetworkServiceServer(new(Service))
 
 func init() {
-	grpcserver.Register(new(service), grpcserver.WithServiceBucket("pga"))
+	grpcserver.Register(new(Service), grpcserver.WithServiceBucket("pga"))
 }
 
-type service struct {
+type Service struct {
 	*services.ServiceServer
 }
 
-func (s *service) Init(inner *services.ServiceServer) {
+func (s *Service) Init(inner *services.ServiceServer) {
 	s.ServiceServer = inner
 }
 
-func (s *service) Name() string {
+func (s *Service) Name() string {
 	return fmt.Sprintf("%T", s)
 }
 
-func (s *service) RegisterGRPC(server *grpc.Server) {
+func (s *Service) RegisterGRPC(server *grpc.Server) {
 	pb.RegisterAgentNetworkServiceServer(server, s)
 }
 
-func (s *service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
+func (s *Service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
 
-func (s *service) GetRouteList(ctx context.Context, req *pb.GetRouteListRequest) (*pb.GetRouteListResponse, error) {
+func (s *Service) GetRouteList(ctx context.Context, req *pb.GetRouteListRequest) (*pb.GetRouteListResponse, error) {
 	routes, err := s.ServiceServer.GetRouteList(ctx, core.InetFamily(req.Family))
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (s *service) GetRouteList(ctx context.Context, req *pb.GetRouteListRequest)
 	return &pb.GetRouteListResponse{Routes: routesToProto(routes)}, nil
 }
 
-func (s *service) AddRoute(ctx context.Context, req *pb.RouteRequest) (*pb.AddRouteResponse, error) {
+func (s *Service) AddRoute(ctx context.Context, req *pb.RouteRequest) (*pb.AddRouteResponse, error) {
 	attrs := core.RouteAttrs{
 		LinkName: req.LinkName,
 		Scope:    netlink.Scope(req.Scope),
@@ -69,7 +69,7 @@ func (s *service) AddRoute(ctx context.Context, req *pb.RouteRequest) (*pb.AddRo
 	return &pb.AddRouteResponse{Route: routeToProto(r)}, nil
 }
 
-func (s *service) DelRoute(ctx context.Context, req *pb.RouteRequest) (*pb.DelRouteResponse, error) {
+func (s *Service) DelRoute(ctx context.Context, req *pb.RouteRequest) (*pb.DelRouteResponse, error) {
 	attrs := core.RouteAttrs{
 		LinkName: req.LinkName,
 		Scope:    netlink.Scope(req.Scope),
@@ -87,7 +87,7 @@ func (s *service) DelRoute(ctx context.Context, req *pb.RouteRequest) (*pb.DelRo
 	return &pb.DelRouteResponse{Route: routeToProto(r)}, nil
 }
 
-func (s *service) GetInterfaces(ctx context.Context, _ *empty.Empty) (*pb.GetInterfacesResponse, error) {
+func (s *Service) GetInterfaces(ctx context.Context, _ *empty.Empty) (*pb.GetInterfacesResponse, error) {
 	ifaces, err := s.ServiceServer.GetInterfaces(ctx)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (s *service) GetInterfaces(ctx context.Context, _ *empty.Empty) (*pb.GetInt
 	return &pb.GetInterfacesResponse{Interfaces: ifaceListToProto(ifaces)}, nil
 }
 
-func (s *service) SetInterfaceLinkUp(ctx context.Context, req *pb.SetInterfaceLinkStateRequest) (*empty.Empty, error) {
+func (s *Service) SetInterfaceLinkUp(ctx context.Context, req *pb.SetInterfaceLinkStateRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.SetInterfaceLinkUp(ctx, req.LinkName)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (s *service) SetInterfaceLinkUp(ctx context.Context, req *pb.SetInterfaceLi
 	return new(empty.Empty), nil
 }
 
-func (s *service) SetInterfaceLinkDown(ctx context.Context, req *pb.SetInterfaceLinkStateRequest) (*empty.Empty, error) {
+func (s *Service) SetInterfaceLinkDown(ctx context.Context, req *pb.SetInterfaceLinkStateRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.SetInterfaceLinkDown(ctx, req.LinkName)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (s *service) SetInterfaceLinkDown(ctx context.Context, req *pb.SetInterface
 	return new(empty.Empty), nil
 }
 
-func (s *service) AddIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.Empty, error) {
+func (s *Service) AddIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.AddIPAddr(ctx, req.LinkName, req.Addr)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (s *service) AddIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.
 	return new(empty.Empty), nil
 }
 
-func (s *service) DelIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.Empty, error) {
+func (s *Service) DelIPAddr(ctx context.Context, req *pb.IPAddrRequest) (*empty.Empty, error) {
 	err := s.ServiceServer.DelIPAddr(ctx, req.LinkName, req.Addr)
 	if err != nil {
 		return nil, err

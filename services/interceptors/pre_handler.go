@@ -4,26 +4,32 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/0xef53/phoenix-guest-agent/services/filesystem"
+	"github.com/0xef53/phoenix-guest-agent/services/system"
+
 	grpc "google.golang.org/grpc"
 )
 
 func PreHandlerUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		/*		switch s := info.Server.(type) {
-				case *AgentFileSystemService:
-					if s.IsLocked() {
-						switch info.FullMethod {
-						case "/agent.AgentService/UnfreezeFileSystems":
-						case "/agent.AgentService/GetAgentInfo":
-						case "/agent.AgentService/GetGuestInfo":
-						default:
-							return nil, fmt.Errorf("All filesystems are frozen. Unable to execute: %s", info.FullMethod)
-						}
-					}
-				}
-		*/
+		var locked bool
 
-		fmt.Printf("DEBUG: PreHandlerUnaryServerInterceptor(): type of info.Server = %T\n", info.Server)
+		switch s := info.Server.(type) {
+		case *system.Service:
+			locked = s.IsLocked()
+		case *filesystem.Service:
+			locked = s.IsLocked()
+		}
+
+		if locked {
+			switch info.FullMethod {
+			case "/pga.api.services.system.v2.AgentSystemService/GetInfo":
+			case "/pga.api.services.agent.v2.AgentService/GetInfo":
+			case "/pga.api.services.agent.v2.AgentFileSystemService/Unfreeze":
+			default:
+				return nil, fmt.Errorf("All filesystems are frozen. Unable to execute: %s", info.FullMethod)
+			}
+		}
 
 		return handler(ctx, req)
 	}
