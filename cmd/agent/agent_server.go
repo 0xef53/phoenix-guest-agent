@@ -17,6 +17,7 @@ import (
 	_ "github.com/0xef53/phoenix-guest-agent/services/agent"
 	_ "github.com/0xef53/phoenix-guest-agent/services/filesystem"
 	_ "github.com/0xef53/phoenix-guest-agent/services/network"
+	_ "github.com/0xef53/phoenix-guest-agent/services/secure_shell"
 	_ "github.com/0xef53/phoenix-guest-agent/services/system"
 
 	grpcserver "github.com/0xef53/go-grpc/server"

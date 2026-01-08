@@ -19,6 +19,7 @@ go install \
     -buildvcs=false \
     -ldflags "-s -w" \
         "${PROJECT_REPO}/cmd/agent" \
-        "${PROJECT_REPO}/cmd/client"
+        "${PROJECT_REPO}/cmd/client" \
+        "${PROJECT_REPO}/cmd/vsock-proxy"
 
 exit 0

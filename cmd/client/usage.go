@@ -22,6 +22,10 @@ var usageContent = [][]string{
 		"(uptime, la, mem/swap/disks statistics, logged-in users)",
 	},
 	{
+		"ssh",
+		"start SSH connection to the internal PGA Secure Shell Server",
+	},
+	{
 		"ip addr show",
 		"print summary info about network interfaces",
 	},

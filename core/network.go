@@ -54,7 +54,7 @@ func (s *Server) DelRoute(ctx context.Context, attrs *RouteAttrs) (*RouteInfo, e
 	return s.updateRouteTable(ctx, "del", attrs)
 }
 
-func (s *Server) updateRouteTable(ctx context.Context, action string, attrs *RouteAttrs) (*RouteInfo, error) {
+func (s *Server) updateRouteTable(_ context.Context, action string, attrs *RouteAttrs) (*RouteInfo, error) {
 	link, err := netlink.LinkByName(attrs.LinkName)
 	if err != nil {
 		return nil, os.NewSyscallError("rtnetlink", err)

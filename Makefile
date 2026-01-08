@@ -32,7 +32,8 @@ DOCKER_PB_ARGS := \
 protofiles_grpc = \
     types/v2/agent.proto \
     services/agent/v2/agent.proto \
-	services/system/v2/system.proto
+	services/system/v2/system.proto \
+	services/secure_shell/v2/secure_shell.proto
 
 DOCKER_DEB_ARGS := \
     -w /root/source \
@@ -43,7 +44,7 @@ DOCKER_DEB_ARGS := \
     --entrypoint build-deb.sh
 
 binaries = \
-    bin/agent bin/client
+    bin/agent bin/client bin/vsock-proxy
 
 .PHONY: all build clean protobufs $(proto_files)
 

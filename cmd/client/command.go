@@ -50,6 +50,8 @@ func ExecuteCommand(args []string) error {
 		return client.ShowAgentInfo(ctx)
 	case "guest-info":
 		return client.ShowGuestInfo(ctx)
+	case "ssh":
+		return client.ExecSecureShellClient(ctx)
 	}
 
 	// Commands WITH variable arguments

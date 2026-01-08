@@ -6,7 +6,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/0xef53/phoenix-guest-agent/internal/sshd"
 	"github.com/0xef53/phoenix-guest-agent/internal/version"
+
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,7 +19,8 @@ type Server struct {
 	mu     sync.Mutex
 	locked bool
 
-	stat func() *GuestInfo
+	stat       func() *GuestInfo
+	sshUserKey func() []byte
 
 	features *AgentFeatures
 }
@@ -39,6 +42,26 @@ func NewServer(ctx context.Context, features *AgentFeatures) (*Server, error) {
 	srv.stat = poller.Stat
 
 	go poller.Run(ctx, 30*time.Second)
+
+	// Start SSHd server
+	if !features.WithoutSSH {
+		go func() {
+			sshSrv, err := sshd.NewServer(&sshd.Config{Port: 4949})
+			if err != nil {
+				log.Errorf("Cannot start Remote Control Protocol: %s", err)
+
+				return
+			}
+
+			srv.sshUserKey = sshSrv.UserPrivateKey
+
+			log.Info("Remote Control Protocol started")
+
+			sshSrv.Run(ctx)
+
+			log.Info("Remote Control Protocol stopped")
+		}()
+	}
 
 	return &srv, nil
 }
