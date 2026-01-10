@@ -78,6 +78,10 @@ var usageContent = [][]string{
 		"copy local file to a guest system",
 	},
 	{
+		"fs-sync",
+		"sync cached writes to persistent storage",
+	},
+	{
 		"fs-freeze",
 		"sync and freeze all freezable guest filesystems",
 	},

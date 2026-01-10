@@ -266,6 +266,14 @@ func (c *client) streamFrom(ctx context.Context, src string, dst io.Writer) erro
 	})
 }
 
+func (c *client) SyncAll(ctx context.Context) error {
+	return c.executeGRPC(ctx, func(grpcClient *grpc_interfaces.Agent) error {
+		_, err := grpcClient.FileSystem().Sync(ctx, new(empty.Empty))
+
+		return err
+	})
+}
+
 func (c *client) FreezeAll(ctx context.Context) error {
 	return c.executeGRPC(ctx, func(grpcClient *grpc_interfaces.Agent) error {
 		_, err := grpcClient.FileSystem().Freeze(ctx, new(empty.Empty))

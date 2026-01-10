@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 func (s *Server) GetFileMD5Hash(ctx context.Context, fpath string) (string, error) {
@@ -141,6 +142,12 @@ func (s *Server) CreateDir(ctx context.Context, fpath string, mode os.FileMode) 
 	defer syscall.Umask(oldmask)
 
 	return os.MkdirAll(fpath, mode)
+}
+
+func (s *Server) SyncFileSystems(ctx context.Context) error {
+	unix.Sync()
+
+	return nil
 }
 
 func (s *Server) FreezeFileSystems(ctx context.Context) error {

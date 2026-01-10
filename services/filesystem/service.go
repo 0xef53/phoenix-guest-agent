@@ -45,6 +45,15 @@ func (s *Service) RegisterGRPC(server *grpc.Server) {
 
 func (s *Service) RegisterGW(_ *grpc_runtime.ServeMux, _ string, _ []grpc.DialOption) {}
 
+func (s *Service) Sync(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
+	err := s.ServiceServer.SyncFileSystems(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return new(empty.Empty), nil
+}
+
 func (s *Service) Freeze(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
 	err := s.ServiceServer.FreezeFileSystems(ctx)
 	if err != nil {

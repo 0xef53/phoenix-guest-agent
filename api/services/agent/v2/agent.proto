@@ -65,6 +65,7 @@ message IPAddrRequest {
 }
 
 service AgentFileSystemService {
+    rpc Sync(google.protobuf.Empty) returns (google.protobuf.Empty) { }
     rpc Freeze(google.protobuf.Empty) returns (google.protobuf.Empty) { }
     rpc Unfreeze(google.protobuf.Empty) returns (google.protobuf.Empty) { }
 

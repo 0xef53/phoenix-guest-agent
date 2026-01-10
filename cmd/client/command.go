@@ -71,6 +71,8 @@ func ExecuteCommand(args []string) error {
 		return client.UpdateRouteTable(ctx, args[2], args[3], "", args[5])
 
 	// file system
+	case args[0] == "fs-sync":
+		return client.SyncAll(ctx)
 	case argsMatch("fs-freeze", args):
 		return client.FreezeAll(ctx)
 	case argsMatch("fs-unfreeze", args):
