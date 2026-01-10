@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
+	"time"
 
 	"github.com/0xef53/phoenix-guest-agent/cert"
 	"github.com/0xef53/phoenix-guest-agent/core"
@@ -42,7 +43,7 @@ func main() {
 
 	app.Commands = []*cli.Command{
 		// AGENT
-		&cli.Command{
+		{
 			Name:  "serve",
 			Usage: "run Guest Agent application",
 			Flags: []cli.Flag{
@@ -55,7 +56,7 @@ func main() {
 			Action: runAgent,
 		},
 		// NETINIT
-		&cli.Command{
+		{
 			Name:  "netinit",
 			Usage: "configure/deconfigure network interfaces",
 			Flags: []cli.Flag{
@@ -65,7 +66,7 @@ func main() {
 			Action: runNetInit,
 		},
 		// VERSION
-		&cli.Command{
+		{
 			Name:  "version",
 			Usage: "print the version information",
 			Action: func(ctx context.Context, c *cli.Command) error {
@@ -118,7 +119,15 @@ func runAgent(ctx context.Context, c *cli.Command) error {
 		cancel()
 	}()
 
-	return agent.ListenAndServe(ctx)
+	if err := agent.ListenAndServe(ctx); err != nil {
+		return err
+	}
+
+	log.Info("Waiting for all subprocesses to complete (3s) ...")
+
+	time.Sleep(3 * time.Second)
+
+	return nil
 }
 
 func runNetInit(_ context.Context, c *cli.Command) error {

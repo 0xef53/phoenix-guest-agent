@@ -44,7 +44,7 @@ DOCKER_DEB_ARGS := \
     --entrypoint build-deb.sh
 
 binaries = \
-    bin/agent bin/client bin/vsock-proxy
+    bin/agent bin/client
 
 .PHONY: all build clean protobufs $(proto_files)
 

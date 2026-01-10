@@ -50,8 +50,6 @@ func ExecuteCommand(args []string) error {
 		return client.ShowAgentInfo(ctx)
 	case "guest-info":
 		return client.ShowGuestInfo(ctx)
-	case "ssh":
-		return client.ExecSecureShellClient(ctx)
 	}
 
 	// Commands WITH variable arguments
@@ -101,6 +99,18 @@ func ExecuteCommand(args []string) error {
 		lscmd.Parse(args[1:])
 
 		return client.ShowFileStat(ctx, lscmd.Arg(0), useLongFormat, withoutContent)
+
+	case args[0] == "ssh" || args[0] == "secure-shell" || args[0] == "shell":
+		var username string = "root"
+		var shell, socatBinary string
+
+		shellCmd := flag.NewFlagSet("", flag.ExitOnError)
+		shellCmd.StringVar(&username, "u", username, "user name to log in as on a guest system")
+		shellCmd.StringVar(&shell, "shell", shell, "use secified shell program")
+		shellCmd.StringVar(&socatBinary, "socat-binary", "", "path to the custom socat binary")
+		shellCmd.Parse(args[1:])
+
+		return client.ExecSecureShellClient(ctx, endpoint, username, shell, socatBinary, shellCmd.Args()...)
 	}
 
 	printSectionUsage(getFirstN(strings.Join(args, " "), 3))
