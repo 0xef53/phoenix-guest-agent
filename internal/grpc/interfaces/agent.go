@@ -15,7 +15,7 @@ type Agent struct {
 	Client_Network    pb_agent.AgentNetworkServiceClient
 	Client_FileSystem pb_agent.AgentFileSystemServiceClient
 
-	Client_SecureSHell pb_secure_shell.AgentSecureShellServiceClient
+	Client_SecureShell pb_secure_shell.AgentSecureShellServiceClient
 }
 
 func NewAgentInterface(conn *grpc.ClientConn) *Agent {
@@ -24,7 +24,7 @@ func NewAgentInterface(conn *grpc.ClientConn) *Agent {
 		Client_Agent:       pb_agent.NewAgentServiceClient(conn),
 		Client_Network:     pb_agent.NewAgentNetworkServiceClient(conn),
 		Client_FileSystem:  pb_agent.NewAgentFileSystemServiceClient(conn),
-		Client_SecureSHell: pb_secure_shell.NewAgentSecureShellServiceClient(conn),
+		Client_SecureShell: pb_secure_shell.NewAgentSecureShellServiceClient(conn),
 	}
 }
 
@@ -45,5 +45,5 @@ func (k *Agent) FileSystem() pb_agent.AgentFileSystemServiceClient {
 }
 
 func (k *Agent) SecureShell() pb_secure_shell.AgentSecureShellServiceClient {
-	return k.Client_SecureSHell
+	return k.Client_SecureShell
 }
