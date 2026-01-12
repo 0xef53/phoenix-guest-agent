@@ -63,7 +63,13 @@ func (a *Agent) ListenAndServe(ctx context.Context) error {
 		interceptors.PreHandlerStreamServerInterceptor(),
 	}
 
-	grpcSrv := newServer(ui, si, tlsConfig)
+	var grpcSrv *grpc.Server
+
+	if _, err := os.Stat("/dev/vsock"); os.IsNotExist(err) || a.LegacyMode {
+		grpcSrv = newServer(ui, si, nil)
+	} else {
+		grpcSrv = newServer(ui, si, tlsConfig)
+	}
 
 	if h, err := core.NewServer(ctx, &a.AgentFeatures); err == nil {
 		if _, err := services.NewServiceServer(h); err != nil {
@@ -106,6 +112,7 @@ func (a *Agent) ListenAndServe(ctx context.Context) error {
 
 				return devconn.ListenDevice(a.SerialPort)
 			}
+
 			log.Info("Using Linux VM sockets (AF_VSOCK) as a transport")
 
 			return vsock.Listen(core.GRPCPort, nil)
@@ -140,8 +147,8 @@ func (a *Agent) ListenAndServe(ctx context.Context) error {
 
 			for _, addr := range addrs {
 				if _, ok := processed[addr]; !ok {
-					if l, err := net.Listen("tcp", net.JoinHostPort(addr, fmt.Sprintf("%d", core.GRPCPort))); err == nil {
-						listeners <- l
+					if tl, err := tls.Listen("tcp", net.JoinHostPort(addr, fmt.Sprintf("%d", core.GRPCPort)), tlsConfig); err == nil {
+						listeners <- tl
 
 						processed[addr] = struct{}{}
 					} else {

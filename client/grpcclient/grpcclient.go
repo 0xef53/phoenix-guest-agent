@@ -17,6 +17,7 @@ import (
 
 	grpc "google.golang.org/grpc"
 	grpc_credentials "google.golang.org/grpc/credentials"
+	grpc_credentials_insecure "google.golang.org/grpc/credentials/insecure"
 
 	"github.com/mdlayher/vsock"
 )
@@ -35,6 +36,8 @@ func newConnection(endpoint string, tlsConfig *tls.Config) (*grpc.ClientConn, er
 	if tlsConfig == nil {
 		return nil, fmt.Errorf("TLS config is not set")
 	}
+
+	var withoutTLS bool
 
 	var dialfn func(string, time.Duration) (net.Conn, error)
 
@@ -67,6 +70,8 @@ func newConnection(endpoint string, tlsConfig *tls.Config) (*grpc.ClientConn, er
 		dialfn = func(addr string, t time.Duration) (net.Conn, error) {
 			return net.Dial("unix", addr)
 		}
+
+		withoutTLS = true
 	default:
 		return nil, fmt.Errorf("unknown endpoint")
 	}
@@ -81,8 +86,12 @@ func newConnection(endpoint string, tlsConfig *tls.Config) (*grpc.ClientConn, er
 		grpc.WithDialer(dialfn),
 	}
 
-	// We use only secure connection
-	dialOpts = append(dialOpts, grpc.WithTransportCredentials(grpc_credentials.NewTLS(tlsConfig)))
+	if withoutTLS {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(grpc_credentials_insecure.NewCredentials()))
+	} else {
+		// We use only secure connection with VSOCK and TCP
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(grpc_credentials.NewTLS(tlsConfig)))
+	}
 
 	return grpc.Dial(endpoint, dialOpts...)
 }

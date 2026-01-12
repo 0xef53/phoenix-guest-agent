@@ -44,7 +44,7 @@ func NewServer(ctx context.Context, features *AgentFeatures) (*Server, error) {
 	go poller.Run(ctx, 30*time.Second)
 
 	// Start Secure Shell server
-	if !features.WithoutSSH {
+	if !features.WithoutSSH && !features.LegacyMode {
 		go func() {
 			sshSrv, err := secure_shell.NewServer(&secure_shell.Config{Port: RCPPort})
 			if err != nil {

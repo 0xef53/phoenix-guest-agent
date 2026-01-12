@@ -91,6 +91,7 @@ func (c *client) ExecSecureShellClient(ctx context.Context, endpoint, user, shel
 	sshArgs := []string{
 		sshBinary,
 		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", fmt.Sprintf("ProxyCommand=%s - VSOCK-CONNECT:%s:%d", socatBinary, endpoint[4:], core.RCPPort),
 	}
 
@@ -109,7 +110,8 @@ func (c *client) ExecSecureShellClient(ctx context.Context, endpoint, user, shel
 
 	sshArgs = append(sshArgs, command...)
 
-	fmt.Printf("Command: %s\n", strings.Join(sshArgs, " "))
+	// Debug
+	//fmt.Printf("Command: %s\n", strings.Join(sshArgs, " "))
 
 	return syscall.Exec(sshBinary, sshArgs, os.Environ())
 }

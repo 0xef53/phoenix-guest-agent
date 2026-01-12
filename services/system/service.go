@@ -46,5 +46,10 @@ func (s *Service) GetInfo(ctx context.Context, _ *empty.Empty) (*pb.GetInfoRespo
 }
 
 func (s *Service) ShutdownAgent(ctx context.Context, _ *empty.Empty) (*empty.Empty, error) {
+	err := s.ServiceServer.GracefulShutdown(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return new(empty.Empty), nil
 }
