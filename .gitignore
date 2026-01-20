@@ -1,0 +1,8 @@
+.DS_Store
+cert/*.crt
+cert/*.key
+debug/
+bin/
+packages/
+vendor/
+deploy

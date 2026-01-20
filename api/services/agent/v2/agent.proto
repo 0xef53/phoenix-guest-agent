@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package pga.api.services.agent.v2;
+
+import "google/protobuf/empty.proto";
+import "types/v2/agent.proto";
+
+option go_package = "github.com/0xef53/phoenix-guest-agent/api/services/agent/v2;agent";
+
+service AgentService {
+    rpc GetInfo(google.protobuf.Empty) returns (GetInfoResponse) { }
+}
+
+message GetInfoResponse {
+    types.v2.GuestInfo info = 1;
+}
+
+service AgentNetworkService {
+    rpc GetRouteList(GetRouteListRequest) returns (GetRouteListResponse) { }
+    rpc AddRoute(RouteRequest) returns (AddRouteResponse) { }
+    rpc DelRoute(RouteRequest) returns (DelRouteResponse) { }
+    rpc GetInterfaces(google.protobuf.Empty) returns (GetInterfacesResponse) { }
+    rpc SetInterfaceLinkUp(SetInterfaceLinkStateRequest) returns (google.protobuf.Empty) { }
+    rpc SetInterfaceLinkDown(SetInterfaceLinkStateRequest) returns (google.protobuf.Empty) { }
+    rpc AddIPAddr(IPAddrRequest) returns (google.protobuf.Empty) { }
+    rpc DelIPAddr(IPAddrRequest) returns (google.protobuf.Empty) { }
+}
+
+message GetRouteListRequest {
+    types.v2.InetFamily family = 1;
+}
+
+message GetRouteListResponse {
+    repeated types.v2.RouteInfo routes = 1;
+}
+
+message RouteRequest {
+    string link_name = 1;
+    types.v2.RouteScope scope = 2;
+    string dst = 3;
+    string src = 4;
+    string gw = 5;
+    int32 table = 6;
+}
+
+message AddRouteResponse {
+    types.v2.RouteInfo route = 1;
+}
+
+message DelRouteResponse {
+    types.v2.RouteInfo route = 1;
+}
+
+message GetInterfacesResponse {
+    repeated types.v2.InterfaceInfo interfaces = 1;
+}
+
+message SetInterfaceLinkStateRequest {
+    string link_name = 1;
+}
+
+message IPAddrRequest {
+    string link_name = 1;
+    string addr = 2;
+}
+
+service AgentFileSystemService {
+    rpc Sync(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+    rpc Freeze(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+    rpc Unfreeze(google.protobuf.Empty) returns (google.protobuf.Empty) { }
+
+    rpc GetFileMD5Hash(GetFileMD5HashRequest) returns (GetFileMD5HashResponse) { }
+    rpc GetFileStat(GetFileStatRequest) returns (GetFileStatResponse) { }
+    rpc SetFileOwner(SetFileOwnerRequest) returns (google.protobuf.Empty) { }
+    rpc SetFileMode(SetFileModeRequest) returns (google.protobuf.Empty) { }
+
+    rpc CreateDir(CreateDirRequest) returns (google.protobuf.Empty) { }
+
+    rpc UploadFile(stream UploadFileRequest) returns (google.protobuf.Empty) {}
+    rpc DownloadFile(DownloadFileRequest) returns (stream FileContent) {}
+}
+
+message GetFileMD5HashRequest {
+    string path = 1;
+}
+
+message GetFileMD5HashResponse {
+    string hash = 1;
+}
+
+message GetFileStatRequest {
+    string path = 1;
+    bool with_dir_content = 2;
+}
+
+message GetFileStatResponse {
+    repeated types.v2.FileStat files = 1;
+}
+
+message SetFileOwnerRequest {
+    string path = 1;
+    string owner = 2;
+    string group = 3;
+}
+
+message SetFileModeRequest {
+    string path = 1;
+    uint32 mode = 4;
+}
+
+message CreateDirRequest {
+    string path = 1;
+    string owner = 2;
+    string group = 3;
+    uint32 mode = 4;
+}
+
+message UploadFileRequest {
+    message FileInfo {
+        string path = 1;
+    }
+    oneof data {
+        FileInfo info = 1;
+        bytes chunk_data = 2;
+    };
+}
+
+message DownloadFileRequest {
+    string path = 1;
+}
+
+message FileContent {
+    bytes chunk_data = 1;
+}

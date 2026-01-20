@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package pga.api.services.secure_shell.v2;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/0xef53/phoenix-guest-agent/api/services/secure_shell/v2;secure_shell";
+
+service AgentSecureShellService {
+    rpc GetUserKey(google.protobuf.Empty) returns (GetUserKeyResponse) { }
+}
+
+message GetUserKeyResponse {
+    bytes key = 1;
+}
