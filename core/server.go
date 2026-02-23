@@ -31,11 +31,6 @@ func NewServer(ctx context.Context, features *AgentFeatures) (*Server, error) {
 		features:  features,
 	}
 
-	// Try to load vsock module
-	if err := LoadVSockModule(); err != nil {
-		log.Warnf("Non-fatal error: %s", err)
-	}
-
 	// Start stat poller
 	poller := StatPoller{}
 

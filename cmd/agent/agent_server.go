@@ -39,6 +39,11 @@ type Agent struct {
 }
 
 func (a *Agent) ListenAndServe(ctx context.Context) error {
+	// Try to load vsock module
+	if err := core.LoadVSockModule(); err != nil {
+		log.Warnf("Non-fatal error: %s", err)
+	}
+
 	if len(a.SerialPort) == 0 {
 		a.SerialPort = core.DefaultGuestSerialPort
 	}
